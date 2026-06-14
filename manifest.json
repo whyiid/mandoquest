@@ -1,0 +1,15 @@
+{
+  "name": "MandoQuest — Learn Chinese!",
+  "short_name": "MandoQuest",
+  "description": "A fun Mandarin learning game for kids — match, listen, build sentences, hunt characters, and speak!",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff6ec",
+  "theme_color": "#ff8a3d",
+  "lang": "en",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
