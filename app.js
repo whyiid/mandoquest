@@ -504,11 +504,22 @@ function modeSpeak(catId) {
 
     const mic = $('#sp-mic'), fb = $('#sp-fb'), heard = $('#sp-heard');
 
-    if (!speechSupported) {
-      mic.textContent = '✅';
-      mic.onclick = () => { fb.className = 'feedback-line good'; fb.textContent = '✅ Great!'; correct++; addWordCorrect(catId, w.hanzi); sfx('correct'); reactGame('excited'); setTimeout(() => { i++; show(); }, 900); };
-      return;
-    }
+    // Self-report pass: child taps ✅ to confirm they said it. Used when speech
+    // recognition can't work — no API support, OR offline: Web Speech streams
+    // audio to Google servers, so with no wifi it silently returns no-speech
+    // every time. Matthew plays as an installed PWA offline, so this is the
+    // normal path for him, not just a fallback.
+    const passBtn = hint => {
+      mic.textContent = '✅'; mic.classList.remove('listening');
+      fb.className = 'feedback-line'; fb.textContent = hint || 'Tap ✅ when you said it 😊'; heard.textContent = '';
+      mic.onclick = () => {
+        fb.className = 'feedback-line good'; fb.textContent = '✅ ' + pick(['Hebat!', 'Great!', 'Perfect!', 'Wow!']);
+        correct++; addWordCorrect(catId, w.hanzi); sfx('correct'); reactGame('excited'); confetti();
+        setTimeout(() => { i++; show(); }, 1000);
+      };
+    };
+
+    if (!speechSupported || !navigator.onLine) { passBtn(); return; }
 
     let retried = false;
     const startListen = () => {
@@ -527,12 +538,12 @@ function modeSpeak(catId) {
           }
         },
         err => {
-          mic.classList.remove('listening'); fb.className = 'feedback-line bad';
-          if (err === 'not-allowed' || err === 'service-not-allowed') fb.textContent = '🎙️ Please allow the microphone!';
-          else if ((err === 'no-speech' || err === 'aborted') && !retried) { retried = true; startListen(); }   // one silent retry
-          else if (err === 'no-speech' || err === 'aborted') fb.textContent = "🔇 Didn't hear you — tap 🎤 again!";
-          else if (err === 'network') fb.textContent = '🔇 Try again — hold closer to the mic!';
-          else fb.textContent = '🔄 Try again!';
+          mic.classList.remove('listening');
+          if (err === 'not-allowed' || err === 'service-not-allowed') { fb.className = 'feedback-line bad'; fb.textContent = '🎙️ Please allow the microphone!'; return; }
+          if ((err === 'no-speech' || err === 'aborted') && !retried) { retried = true; startListen(); return; }   // one silent retry
+          // recognizer can't hear it (offline, no language pack, weak mic) —
+          // don't dead-end the child on "try again"; let them self-report.
+          passBtn("🎤 couldn't hear — tap ✅ if you said it!");
         }
       );
     };
