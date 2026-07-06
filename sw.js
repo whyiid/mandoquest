@@ -1,5 +1,11 @@
 /* MandoQuest service worker — cache-first for offline play */
-const CACHE = 'mandoquest-v12';
+const CACHE = 'mandoquest-v14';
+// Word clips are audio/0001.mp3 .. audio/0166.mp3 (contiguous). Precache them
+// ALL on install so every category has sound offline. The child plays as an
+// installed PWA with no wifi; later categories (e.g. Food) were never
+// runtime-cached, so their clips 404'd offline and fell back to silent TTS.
+// 166 clips ≈ 1.4 MB — trivial for an offline kids' app.
+const AUDIO = Array.from({ length: 166 }, (_, i) => './audio/' + String(i + 1).padStart(4, '0') + '.mp3');
 const ASSETS = [
   './',
   './index.html',
@@ -9,11 +15,9 @@ const ASSETS = [
   './sfx.js',
   './audio/manifest.js',
   './manifest.json',
-  './icons/icon.svg'
+  './icons/icon.svg',
+  ...AUDIO
 ];
-// Individual audio clips (audio/<id>.m4a) are not precached — the fetch
-// handler below runtime-caches them on first play, so they go offline as
-// the child uses them without bloating the install step.
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
@@ -36,6 +40,6 @@ self.addEventListener('fetch', e => {
         caches.open(CACHE).then(c => c.put(e.request, copy));
       }
       return res;
-    }).catch(() => caches.match('./index.html')))
+    }).catch(() => e.request.mode === 'navigate' ? caches.match('./index.html') : Response.error()))
   );
 });

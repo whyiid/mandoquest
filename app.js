@@ -96,22 +96,25 @@ function listenOnce(onResult, onError) {
   r.onerror = settle(e => onError(e.error || 'error'));
   r.onend = settle(() => onError('no-speech'));
   setTimeout(() => {
-    try { r.start(); } catch (e) { settled = true; clearTimeout(timer); onError('error'); }
+    try { r.start(); } catch (e) { settled = true; clearTimeout(timer); onError('error'); return; }
+    setTimeout(() => { try { r.stop(); } catch (_) {} }, 6000);   // let onresult fire, don't hang to 12s abort
   }, 300);
   return r;
 }
 function normHan(s) { return (s || '').replace(/[^一-鿿A-Za-z0-9]/g, ''); }
 const NUM_TO_HAN = {'1000':'千','100':'百','10':'十','0':'零','1':'一','2':'二','3':'三','4':'四','5':'五','6':'六','7':'七','8':'八','9':'九'};
 function numToHan(s) { return (s||'').replace(/1000|100|10|\d/g, m => NUM_TO_HAN[m] || m); }
-function speechMatch(alts, target) {
-  const t = normHan(target);
+function toneless(s) { return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z]/g, ''); }
+function speechMatch(alts, w) {
+  const t = normHan(w.hanzi), tpy = toneless(w.pinyin);
   return alts.some(a => {
     const x = normHan(numToHan(a));
-    if (!x) return false;
-    if (x === t || x.includes(t) || t.includes(x)) return true;
+    if (x && (x === t || x.includes(t) || t.includes(x))) return true;
     let common = 0;
     for (const ch of t) if (x.indexOf(ch) !== -1) common++;
-    return common >= Math.ceil(t.length / 2);
+    if (t.length && common >= Math.ceil(t.length / 2)) return true;
+    const apy = toneless(a);                                     // recognizer sometimes returns latin pinyin
+    return apy && tpy && (apy.includes(tpy) || tpy.includes(apy));
   });
 }
 
@@ -507,13 +510,15 @@ function modeSpeak(catId) {
       return;
     }
 
-    mic.onclick = () => {
+    let retried = false;
+    const startListen = () => {
+      stopAudio(); if ('speechSynthesis' in window) speechSynthesis.cancel();   // free the audio channel before mic
       mic.classList.add('listening'); fb.className = 'feedback-line'; fb.textContent = 'Listening... 👂'; heard.textContent = '';
       rec = listenOnce(
         alts => {
           mic.classList.remove('listening');
           heard.textContent = alts[0] ? 'You said: ' + alts[0] : '';
-          if (speechMatch(alts, w.hanzi)) {
+          if (speechMatch(alts, w)) {
             fb.className = 'feedback-line good'; fb.textContent = '✅ ' + pick(['Hebat!', 'Great!', 'Perfect!', 'Wow!']);
             correct++; addWordCorrect(catId, w.hanzi); sfx('correct'); reactGame('excited'); confetti();
             setTimeout(() => { i++; show(); }, 1200);
@@ -524,12 +529,14 @@ function modeSpeak(catId) {
         err => {
           mic.classList.remove('listening'); fb.className = 'feedback-line bad';
           if (err === 'not-allowed' || err === 'service-not-allowed') fb.textContent = '🎙️ Please allow the microphone!';
-          else if (err === 'no-speech') fb.textContent = "🔇 Didn't hear you — try again!";
-          else if (err === 'network') fb.textContent = '🤖 Speech game not available on this device.';
+          else if ((err === 'no-speech' || err === 'aborted') && !retried) { retried = true; startListen(); }   // one silent retry
+          else if (err === 'no-speech' || err === 'aborted') fb.textContent = "🔇 Didn't hear you — tap 🎤 again!";
+          else if (err === 'network') fb.textContent = '🔇 Try again — hold closer to the mic!';
           else fb.textContent = '🔄 Try again!';
         }
       );
     };
+    mic.onclick = startListen;
   }
   gameCleanup = () => { try { rec && rec.abort && rec.abort(); } catch (e) {} };
   show();
