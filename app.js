@@ -264,6 +264,52 @@ function renderHome() {
   });
 }
 
+/* ── difficulty tiers (per-topic ramp) ───────────────────────────────────
+   Topics ramp in difficulty by their order: first 4 = easy, next 5 = medium,
+   rest = hard. Later phases add more items/options + mixed distractors; this
+   phase drives only how much pinyin scaffolding is shown. */
+function catTier(id) {
+  const i = MANDO_DATA.categories.findIndex(c => c.id === id);
+  return i < 4 ? 'easy' : i < 9 ? 'medium' : 'hard';
+}
+const TIER_BADGE = { easy: '🟢 Easy', medium: '🟡 Medium', hard: '🔴 Hard' };
+// item/option counts scale up with tier — more to track = harder.
+function tierN(id, easy, medium, hard) {
+  const t = catTier(id);
+  return t === 'easy' ? easy : t === 'medium' ? medium : hard;
+}
+// words from earlier (already-unlocked) topics — feed cumulative-review distractors.
+function earlierWords(id) {
+  const cats = MANDO_DATA.categories;
+  const idx = cats.findIndex(c => c.id === id);
+  let pool = [];
+  for (let j = 0; j < idx; j++) pool = pool.concat(cats[j].words);
+  return pool;
+}
+// n distractor words for `correct`. easy = same topic only; medium/hard blend
+// in ~half from earlier topics so wrong options review past vocab.
+function distractors(id, correct, n) {
+  const same = MANDO_DATA.getCategory(id).words.filter(w => w.hanzi !== correct.hanzi);
+  if (catTier(id) === 'easy') return sample(same, n);
+  const older = earlierWords(id).filter(w => w.hanzi !== correct.hanzi);
+  const picked = sample(older, Math.min(older.length, Math.ceil(n / 2)));
+  const taken = new Set(picked.map(w => w.hanzi).concat(correct.hanzi));
+  let out = picked.concat(sample(same.filter(w => !taken.has(w.hanzi)), n - picked.length));
+  if (out.length < n) {
+    const seen = new Set(out.map(w => w.hanzi).concat(correct.hanzi));
+    out = out.concat(sample(older.filter(w => !seen.has(w.hanzi)), n - out.length));
+  }
+  return shuffle(out).slice(0, n);
+}
+// pinyin crutch drops as tier rises: easy = everywhere, medium = keep only in
+// Speak (the pronunciation guide), hard = none.
+function showPinyin(id, where) {
+  const t = catTier(id);
+  if (t === 'easy') return true;
+  if (t === 'hard') return false;
+  return where === 'speak';   // medium
+}
+
 /* ── Category menu ───────────────────────────────────────────────────── */
 const MODES = [
   { key: 'match',  name: 'Match & Drop',   sub: 'Drag the picture', emoji: '🧲', color: 'var(--brand)' },
@@ -276,7 +322,7 @@ function renderCategory(catId) {
   $('#cat-title').textContent = cat.icon + ' ' + cat.name;
   $('#cat-mastery').textContent = categoryMastery(catId) + '%';
   mountDragon($('#cat-dragon'));
-  $('#cat-speech').textContent = 'Choose a game! 🎮';
+  $('#cat-speech').textContent = TIER_BADGE[catTier(catId)] + ' • Choose a game! 🎮';
   const list = $('#mode-list'); list.innerHTML = '';
   MODES.forEach(mo => {
     const best = getBest(catId, mo.key);
@@ -347,7 +393,7 @@ function makeDraggable(item, onDrop) {
 function modeMatch(catId) {
   currentGame = { catId, replay: () => { showScreen('screen-game'); modeMatch(catId); } };
   const cat = MANDO_DATA.getCategory(catId);
-  const pool = sample(cat.words, 4);
+  const pool = sample(cat.words, Math.min(tierN(catId, 4, 5, 6), cat.words.length));
   const targets = shuffle(pool.slice());
   let matched = 0, wrong = 0;
 
@@ -363,7 +409,8 @@ function modeMatch(catId) {
   $('#game-score').textContent = 0;
   const left = $('#m-left'), right = $('#m-right');
   pool.forEach(w => { const it = el('div', 'drag-item', faceMeaning(w)); it.dataset.hz = w.hanzi; left.appendChild(it); makeDraggable(it, onDrop); });
-  targets.forEach(w => { const t = el('div', 'drop-target', faceHanzi(w, true)); t.dataset.hz = w.hanzi; right.appendChild(t); });
+  const py = showPinyin(catId, 'match');
+  targets.forEach(w => { const t = el('div', 'drop-target', faceHanzi(w, py)); t.dataset.hz = w.hanzi; right.appendChild(t); });
 
   function onDrop(item, target) {
     if (!target) return;
@@ -395,7 +442,7 @@ function modeListen(catId) {
   function show() {
     if (i >= qs.length) { finishRound({ catId, mode: 'listen', correct, total: qs.length }); return; }
     const w = qs[i];
-    const opts = shuffle([w].concat(sample(cat.words.filter(x => x.hanzi !== w.hanzi), 3)));
+    const opts = shuffle([w].concat(distractors(catId, w, tierN(catId, 3, 4, 5))));
     setDots(qs.length, i);
     $('#game-score').textContent = correct;
     gameRender(
@@ -433,7 +480,7 @@ function modeListen(catId) {
 function modeHunt(catId) {
   currentGame = { catId, replay: () => { showScreen('screen-game'); modeHunt(catId); } };
   const cat = MANDO_DATA.getCategory(catId);
-  const cells = sample(cat.words, Math.min(9, cat.words.length));
+  const cells = sample(cat.words, Math.min(tierN(catId, 9, 12, 16), cat.words.length));
   let score = 0, target = null, running = true;
   const DUR = 45000;
 
@@ -496,7 +543,8 @@ function modeSpeak(catId) {
     $('#game-score').textContent = correct;
     gameRender(
       '<div class="prompt-card"><div class="prompt-hanzi">' + w.hanzi + '</div>' +
-      '<div class="prompt-pinyin">' + w.pinyin + '</div><div class="prompt-en">' + w.en + '</div></div>' +
+      (showPinyin(catId, 'speak') ? '<div class="prompt-pinyin">' + w.pinyin + '</div>' : '') +
+      '<div class="prompt-en">' + w.en + '</div></div>' +
       '<button class="btn secondary replay-btn" id="sp-hear">🔊 Hear it</button>' +
       '<div class="center-col" style="flex:0">' +
         '<button class="mic-btn" id="sp-mic">🎤</button>' +
