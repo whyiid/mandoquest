@@ -138,9 +138,17 @@ function getBest(id, mode) { return (state.progress[id] && state.progress[id].st
 function categoryMastery(id) {
   const cat = MANDO_DATA.getCategory(id), p = state.progress[id];
   if (!p) return 0;
+  // word-based: needs each word answered right 3x — but rounds only sample 6
+  // words, so big categories plateau below 80% even at max stars.
   let sum = 0;
   cat.words.forEach(w => { sum += Math.min(p.words[w.hanzi] || 0, 3); });
-  return Math.round(sum / (cat.words.length * 3) * 100);
+  const wordPct = sum / (cat.words.length * 3) * 100;
+  // star-based: 3 stars in all 4 modes = topic beaten = 100%. Take whichever
+  // is higher so completing every mode always unlocks the next topic.
+  let stars = 0;
+  MODES.forEach(mo => { stars += p.stars[mo.key] || 0; });
+  const starPct = stars / (MODES.length * 3) * 100;
+  return Math.round(Math.max(wordPct, starPct));
 }
 function isUnlocked(i) { return i === 0 || categoryMastery(MANDO_DATA.categories[i - 1].id) >= 80; }
 function totalStars() {

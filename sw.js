@@ -1,5 +1,5 @@
 /* MandoQuest service worker — cache-first for offline play */
-const CACHE = 'mandoquest-v15';
+const CACHE = 'mandoquest-v16';
 // Word clips are audio/0001.mp3 .. audio/0166.mp3 (contiguous). Precache them
 // ALL on install so every category has sound offline. The child plays as an
 // installed PWA with no wifi; later categories (e.g. Food) were never
