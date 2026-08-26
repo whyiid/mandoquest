@@ -395,6 +395,7 @@ function modeMatch(catId) {
   const cat = MANDO_DATA.getCategory(catId);
   const pool = sample(cat.words, Math.min(tierN(catId, 4, 5, 6), cat.words.length));
   const targets = shuffle(pool.slice());
+  const n = pool.length;
   let matched = 0, wrong = 0;
 
   gameRender(
@@ -405,7 +406,7 @@ function modeMatch(catId) {
     '</div>',
     'Drag and match! ✋');
 
-  setDots(4, 0);
+  setDots(n, 0);
   $('#game-score').textContent = 0;
   const left = $('#m-left'), right = $('#m-right');
   pool.forEach(w => { const it = el('div', 'drag-item', faceMeaning(w)); it.dataset.hz = w.hanzi; left.appendChild(it); makeDraggable(it, onDrop); });
@@ -419,9 +420,9 @@ function modeMatch(catId) {
       target.classList.add('filled');
       target.insertAdjacentHTML('beforeend', '<div style="font-size:24px;margin-top:4px">✅</div>');
       matched++; addWordCorrect(catId, item.dataset.hz); speak(item.dataset.hz);
-      sfx('correct'); reactGame('happy', pick(MANDO_DATA.phrases.correct)); setDots(4, matched);
+      sfx('correct'); reactGame('happy', pick(MANDO_DATA.phrases.correct)); setDots(n, matched);
       $('#game-score').textContent = matched;
-      if (matched === 4) setTimeout(() => finishRound({ catId, mode: 'match', correct: 4, total: 4 + wrong }), 900);
+      if (matched === n) setTimeout(() => finishRound({ catId, mode: 'match', correct: n, total: n + wrong }), 900);
     } else {
       wrong++;
       if (item.animate) item.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-7px)' }, { transform: 'translateX(7px)' }, { transform: 'translateX(0)' }], { duration: 300 });
