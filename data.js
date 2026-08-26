@@ -1,6 +1,6 @@
 /* ===========================================================================
    MandoQuest — data.js
-   All learning content: 14 categories (155 words) + sentence builder set.
+   All learning content: 19 categories (207 words) + sentence builder set (28).
    Each word: hanzi, pinyin, en (English), id (Indonesian, hidden in UI),
               emoji (visual; '' falls back to the English word badge),
               swatch (optional hex — colors render a real colored circle).
@@ -303,6 +303,108 @@ const MANDO_DATA = {
         { hanzi: '慢',   pinyin: 'màn',        en: 'Slow',   id: 'Lambat',  emoji: '🐌' },
         { hanzi: '好',   pinyin: 'hǎo',        en: 'Good',   id: 'Bagus',   emoji: '👍' }
       ]
+    },
+
+    /* 15 ─ Question Words ────────────────────────────────────────────── */
+    {
+      id: 'questions',
+      name: 'Question Words',
+      icon: '❓',
+      color: '#FFB300',
+      words: [
+        { hanzi: '什么',     pinyin: 'shén me',        en: 'What',      id: 'Apa',        emoji: '❓' },
+        { hanzi: '谁',       pinyin: 'shéi',           en: 'Who',       id: 'Siapa',      emoji: '🙋' },
+        { hanzi: '哪里',     pinyin: 'nǎ lǐ',          en: 'Where',     id: 'Di mana',    emoji: '📍' },
+        { hanzi: '为什么',   pinyin: 'wèi shén me',    en: 'Why',       id: 'Kenapa',     emoji: '🤔' },
+        { hanzi: '怎么',     pinyin: 'zěn me',         en: 'How',       id: 'Bagaimana',  emoji: '🔧' },
+        { hanzi: '什么时候', pinyin: 'shén me shí hou', en: 'When',     id: 'Kapan',      emoji: '⏰' },
+        { hanzi: '多少',     pinyin: 'duō shao',       en: 'How many',  id: 'Berapa',     emoji: '🔢' },
+        { hanzi: '哪个',     pinyin: 'nǎ ge',          en: 'Which one', id: 'Yang mana',  emoji: '👆' },
+        { hanzi: '可以吗',   pinyin: 'kě yǐ ma',       en: 'May I?',    id: 'Boleh?',     emoji: '🙏' },
+        { hanzi: '好吗',     pinyin: 'hǎo ma',         en: 'Is that OK?', id: 'Oke?',     emoji: '👌' }
+      ]
+    },
+
+    /* 16 ─ Feelings ──────────────────────────────────────────────────── */
+    {
+      id: 'feelings',
+      name: 'Feelings',
+      icon: '😊',
+      color: '#F06292',
+      words: [
+        { hanzi: '开心', pinyin: 'kāi xīn',   en: 'Happy',   id: 'Senang',  emoji: '😄' },
+        { hanzi: '难过', pinyin: 'nán guò',   en: 'Sad',     id: 'Sedih',   emoji: '😢' },
+        { hanzi: '生气', pinyin: 'shēng qì',  en: 'Angry',   id: 'Marah',   emoji: '😠' },
+        { hanzi: '累',   pinyin: 'lèi',       en: 'Tired',   id: 'Lelah',   emoji: '😪' },
+        { hanzi: '害怕', pinyin: 'hài pà',    en: 'Scared',  id: 'Takut',   emoji: '😨' },
+        { hanzi: '紧张', pinyin: 'jǐn zhāng', en: 'Nervous', id: 'Gugup',   emoji: '😬' },
+        { hanzi: '兴奋', pinyin: 'xīng fèn',  en: 'Excited', id: 'Semangat', emoji: '🤩' },
+        { hanzi: '无聊', pinyin: 'wú liáo',   en: 'Bored',   id: 'Bosan',   emoji: '😑' },
+        { hanzi: '饿',   pinyin: 'è',         en: 'Hungry',  id: 'Lapar',   emoji: '🤤' },
+        { hanzi: '渴',   pinyin: 'kě',        en: 'Thirsty', id: 'Haus',    emoji: '🥤' }
+      ]
+    },
+
+    /* 17 ─ Places ────────────────────────────────────────────────────── */
+    {
+      id: 'places',
+      name: 'Places',
+      icon: '📍',
+      color: '#8D6E63',
+      words: [
+        { hanzi: '家',     pinyin: 'jiā',        en: 'Home',       id: 'Rumah',         emoji: '🏠' },
+        { hanzi: '学校',   pinyin: 'xué xiào',   en: 'School',     id: 'Sekolah',       emoji: '🏫' },
+        { hanzi: '公园',   pinyin: 'gōng yuán',  en: 'Park',       id: 'Taman',         emoji: '🌳' },
+        { hanzi: '商店',   pinyin: 'shāng diàn', en: 'Store',      id: 'Toko',          emoji: '🏪' },
+        { hanzi: '医院',   pinyin: 'yī yuàn',    en: 'Hospital',   id: 'Rumah sakit',   emoji: '🏥' },
+        { hanzi: '图书馆', pinyin: 'tú shū guǎn', en: 'Library',   id: 'Perpustakaan',  emoji: '📚' },
+        { hanzi: '餐厅',   pinyin: 'cān tīng',   en: 'Restaurant', id: 'Restoran',      emoji: '🍽️' },
+        { hanzi: '厕所',   pinyin: 'cè suǒ',     en: 'Toilet',     id: 'Toilet',        emoji: '🚽' },
+        { hanzi: '操场',   pinyin: 'cāo chǎng',  en: 'Playground', id: 'Lapangan',      emoji: '🛝' },
+        { hanzi: '房间',   pinyin: 'fáng jiān',  en: 'Room',       id: 'Kamar',         emoji: '🚪' }
+      ]
+    },
+
+    /* 18 ─ Hobbies & Sports ──────────────────────────────────────────── */
+    {
+      id: 'hobbies',
+      name: 'Hobbies & Sports',
+      icon: '⚽',
+      color: '#00BCD4',
+      words: [
+        { hanzi: '足球',   pinyin: 'zú qiú',       en: 'Soccer',     id: 'Sepak bola', emoji: '⚽' },
+        { hanzi: '篮球',   pinyin: 'lán qiú',      en: 'Basketball', id: 'Basket',     emoji: '🏀' },
+        { hanzi: '游泳',   pinyin: 'yóu yǒng',     en: 'Swim',       id: 'Berenang',   emoji: '🏊' },
+        { hanzi: '画画',   pinyin: 'huà huà',      en: 'Draw',       id: 'Menggambar', emoji: '🎨' },
+        { hanzi: '唱歌',   pinyin: 'chàng gē',     en: 'Sing',       id: 'Bernyanyi',  emoji: '🎤' },
+        { hanzi: '跳舞',   pinyin: 'tiào wǔ',      en: 'Dance',      id: 'Menari',     emoji: '💃' },
+        { hanzi: '骑车',   pinyin: 'qí chē',       en: 'Ride a bike', id: 'Bersepeda', emoji: '🚴' },
+        { hanzi: '弹钢琴', pinyin: 'tán gāng qín', en: 'Play piano', id: 'Main piano', emoji: '🎹' },
+        { hanzi: '打游戏', pinyin: 'dǎ yóu xì',    en: 'Play games', id: 'Main game',  emoji: '🎮' },
+        { hanzi: '踢球',   pinyin: 'tī qiú',       en: 'Kick ball',  id: 'Menendang bola', emoji: '🦵' }
+      ]
+    },
+
+    /* 19 ─ Household Objects ─────────────────────────────────────────── */
+    {
+      id: 'household',
+      name: 'Household Objects',
+      icon: '🏠',
+      color: '#78909C',
+      words: [
+        { hanzi: '床',   pinyin: 'chuáng',    en: 'Bed',      id: 'Tempat tidur', emoji: '🛏️' },
+        { hanzi: '电视', pinyin: 'diàn shì',  en: 'TV',       id: 'Televisi',     emoji: '📺' },
+        { hanzi: '冰箱', pinyin: 'bīng xiāng', en: 'Fridge',  id: 'Kulkas',       emoji: '🧊' },
+        { hanzi: '门',   pinyin: 'mén',       en: 'Door',     id: 'Pintu',        emoji: '🚪' },
+        { hanzi: '窗户', pinyin: 'chuāng hu', en: 'Window',   id: 'Jendela',      emoji: '🪟' },
+        { hanzi: '灯',   pinyin: 'dēng',      en: 'Lamp',     id: 'Lampu',        emoji: '💡' },
+        { hanzi: '厨房', pinyin: 'chú fáng',  en: 'Kitchen',  id: 'Dapur',        emoji: '🍳' },
+        { hanzi: '沙发', pinyin: 'shā fā',    en: 'Sofa',     id: 'Sofa',         emoji: '🛋️' },
+        { hanzi: '手机', pinyin: 'shǒu jī',   en: 'Phone',    id: 'HP',           emoji: '📱' },
+        { hanzi: '电脑', pinyin: 'diàn nǎo',  en: 'Computer', id: 'Komputer',     emoji: '💻' },
+        { hanzi: '玩具', pinyin: 'wán jù',    en: 'Toy',      id: 'Mainan',       emoji: '🧸' },
+        { hanzi: '钱',   pinyin: 'qián',      en: 'Money',    id: 'Uang',         emoji: '💰' }
+      ]
     }
   ],
 
@@ -322,7 +424,22 @@ const MANDO_DATA = {
     { tokens: ['猫', '是', '黑色'],     pinyin: 'māo shì hēi sè',  en: 'The cat is black' },
     { tokens: ['我', '吃', '饭'],       pinyin: 'wǒ chī fàn',      en: 'I eat rice' },
     { tokens: ['他', '喝', '茶'],       pinyin: 'tā hē chá',       en: 'He drinks tea' },
-    { tokens: ['我', '坐', '车'],       pinyin: 'wǒ zuò chē',      en: 'I ride in a car' }
+    { tokens: ['我', '坐', '车'],       pinyin: 'wǒ zuò chē',      en: 'I ride in a car' },
+    { tokens: ['你', '叫', '什么', '名字'], pinyin: 'nǐ jiào shén me míng zi', en: "What's your name?" },
+    { tokens: ['你', '几岁', '了'],     pinyin: 'nǐ jǐ suì le',    en: 'How old are you?' },
+    { tokens: ['你', '在', '哪里'],     pinyin: 'nǐ zài nǎ lǐ',    en: 'Where are you?' },
+    { tokens: ['现在', '几点', '了'],   pinyin: 'xiàn zài jǐ diǎn le', en: 'What time is it now?' },
+    { tokens: ['我', '很', '开心'],     pinyin: 'wǒ hěn kāi xīn',  en: 'I am happy' },
+    { tokens: ['我', '有点', '累'],     pinyin: 'wǒ yǒu diǎn lèi', en: 'I am a bit tired' },
+    { tokens: ['我', '饿', '了'],       pinyin: 'wǒ è le',         en: "I'm hungry" },
+    { tokens: ['我', '喜欢', '游泳'],   pinyin: 'wǒ xǐ huan yóu yǒng', en: 'I like swimming' },
+    { tokens: ['我', '想', '去', '公园'], pinyin: 'wǒ xiǎng qù gōng yuán', en: 'I want to go to the park' },
+    { tokens: ['我', '可以', '喝', '水', '吗'], pinyin: 'wǒ kě yǐ hē shuǐ ma', en: 'May I drink water?' },
+    { tokens: ['这', '是', '我', '的', '书包'], pinyin: 'zhè shì wǒ de shū bāo', en: 'This is my schoolbag' },
+    { tokens: ['猫', '在', '沙发', '上'], pinyin: 'māo zài shā fā shang', en: 'The cat is on the sofa' },
+    { tokens: ['我', '在', '家', '看', '电视'], pinyin: 'wǒ zài jiā kàn diàn shì', en: 'I watch TV at home' },
+    { tokens: ['妈妈', '在', '厨房'],   pinyin: 'mā ma zài chú fáng', en: 'Mom is in the kitchen' },
+    { tokens: ['弟弟', '在', '玩', '玩具'], pinyin: 'dì di zài wán wán jù', en: 'Little brother is playing with toys' }
   ],
 
   /* ─ Dragon mascot phrases (English, kid-friendly) ────────────────────── */
