@@ -1,6 +1,6 @@
 /* ===========================================================================
    MandoQuest — data.js
-   All learning content: 19 categories (207 words) + sentence builder set (28).
+   All learning content: 25 categories (275 words) + sentence builder set (58).
    Each word: hanzi, pinyin, en (English), id (Indonesian, hidden in UI),
               emoji (visual; '' falls back to the English word badge),
               swatch (optional hex — colors render a real colored circle).
@@ -405,6 +405,134 @@ const MANDO_DATA = {
         { hanzi: '玩具', pinyin: 'wán jù',    en: 'Toy',      id: 'Mainan',       emoji: '🧸' },
         { hanzi: '钱',   pinyin: 'qián',      en: 'Money',    id: 'Uang',         emoji: '💰' }
       ]
+    },
+
+    /* 20 ─ Classroom ────────────────────────────────────────────────────── */
+    {
+      id: 'classroom',
+      name: 'Classroom',
+      icon: '✏️',
+      color: '#5C6BC0',
+      words: [
+        { hanzi: '铅笔',   pinyin: 'qiān bǐ',    en: 'Pencil',    id: 'Pensil',      emoji: '✏️' },
+        { hanzi: '钢笔',   pinyin: 'gāng bǐ',    en: 'Pen',       id: 'Pena',        emoji: '🖊️' },
+        { hanzi: '书',     pinyin: 'shū',         en: 'Book',      id: 'Buku',        emoji: '📖' },
+        { hanzi: '橡皮',   pinyin: 'xiàng pí',    en: 'Eraser',    id: 'Penghapus',   emoji: '🧹' },
+        { hanzi: '尺子',   pinyin: 'chǐ zi',      en: 'Ruler',     id: 'Penggaris',   emoji: '📏' },
+        { hanzi: '书包',   pinyin: 'shū bāo',     en: 'Schoolbag', id: 'Tas sekolah', emoji: '🎒' },
+        { hanzi: '黑板',   pinyin: 'hēi bǎn',     en: 'Blackboard', id: 'Papan tulis', emoji: '🖤' },
+        { hanzi: '作业',   pinyin: 'zuò yè',      en: 'Homework',  id: 'PR',          emoji: '📝' },
+        { hanzi: '考试',   pinyin: 'kǎo shì',     en: 'Test/Exam', id: 'Ujian',       emoji: '📋' },
+        { hanzi: '老师',   pinyin: 'lǎo shī',     en: 'Teacher',   id: 'Guru',        emoji: '👩‍🏫' },
+        { hanzi: '同学',   pinyin: 'tóng xué',    en: 'Classmate', id: 'Teman kelas', emoji: '👫' },
+        { hanzi: '教室',   pinyin: 'jiào shì',    en: 'Classroom', id: 'Kelas',       emoji: '🏫' }
+      ]
+    },
+
+    /* 21 ─ Nature ───────────────────────────────────────────────────────── */
+    {
+      id: 'nature',
+      name: 'Nature',
+      icon: '🌿',
+      color: '#43A047',
+      words: [
+        { hanzi: '太阳', pinyin: 'tài yáng', en: 'Sun',      id: 'Matahari', emoji: '☀️' },
+        { hanzi: '月亮', pinyin: 'yuè liang', en: 'Moon',    id: 'Bulan',    emoji: '🌙' },
+        { hanzi: '星星', pinyin: 'xīng xing', en: 'Star',    id: 'Bintang',  emoji: '⭐' },
+        { hanzi: '云',   pinyin: 'yún',       en: 'Cloud',   id: 'Awan',     emoji: '☁️' },
+        { hanzi: '雨',   pinyin: 'yǔ',        en: 'Rain',    id: 'Hujan',    emoji: '🌧️' },
+        { hanzi: '风',   pinyin: 'fēng',      en: 'Wind',    id: 'Angin',    emoji: '💨' },
+        { hanzi: '雪',   pinyin: 'xuě',       en: 'Snow',    id: 'Salju',    emoji: '❄️' },
+        { hanzi: '树',   pinyin: 'shù',       en: 'Tree',    id: 'Pohon',    emoji: '🌳' },
+        { hanzi: '花',   pinyin: 'huā',       en: 'Flower',  id: 'Bunga',    emoji: '🌸' },
+        { hanzi: '山',   pinyin: 'shān',      en: 'Mountain', id: 'Gunung',  emoji: '⛰️' },
+        { hanzi: '河',   pinyin: 'hé',        en: 'River',   id: 'Sungai',   emoji: '🏞️' },
+        { hanzi: '海',   pinyin: 'hǎi',       en: 'Sea',     id: 'Laut',     emoji: '🌊' }
+      ]
+    },
+
+    /* 22 ─ Clothes ──────────────────────────────────────────────────────── */
+    {
+      id: 'clothes',
+      name: 'Clothes',
+      icon: '👕',
+      color: '#AB47BC',
+      words: [
+        { hanzi: '衬衫', pinyin: 'chèn shān',  en: 'Shirt',    id: 'Kemeja',    emoji: '👔' },
+        { hanzi: '裤子', pinyin: 'kù zi',       en: 'Pants',    id: 'Celana',    emoji: '👖' },
+        { hanzi: '裙子', pinyin: 'qún zi',      en: 'Skirt',    id: 'Rok',       emoji: '👗' },
+        { hanzi: '鞋子', pinyin: 'xié zi',      en: 'Shoes',    id: 'Sepatu',    emoji: '👟' },
+        { hanzi: '袜子', pinyin: 'wà zi',       en: 'Socks',    id: 'Kaus kaki', emoji: '🧦' },
+        { hanzi: '帽子', pinyin: 'mào zi',      en: 'Hat',      id: 'Topi',      emoji: '🧢' },
+        { hanzi: '外套', pinyin: 'wài tào',     en: 'Jacket',   id: 'Jaket',     emoji: '🧥' },
+        { hanzi: '手套', pinyin: 'shǒu tào',    en: 'Gloves',   id: 'Sarung tangan', emoji: '🧤' },
+        { hanzi: '围巾', pinyin: 'wéi jīn',     en: 'Scarf',    id: 'Syal',      emoji: '🧣' },
+        { hanzi: '眼镜', pinyin: 'yǎn jìng',    en: 'Glasses',  id: 'Kacamata',  emoji: '👓' },
+        { hanzi: '背心', pinyin: 'bèi xīn',     en: 'Vest',     id: 'Rompi',     emoji: '🩱' },
+        { hanzi: '睡衣', pinyin: 'shuì yī',     en: 'Pajamas',  id: 'Piyama',    emoji: '😴' }
+      ]
+    },
+
+    /* 23 ─ Transportation ───────────────────────────────────────────────── */
+    {
+      id: 'transport',
+      name: 'Transportation',
+      icon: '🚗',
+      color: '#EF5350',
+      words: [
+        { hanzi: '汽车',     pinyin: 'qì chē',         en: 'Car',        id: 'Mobil',     emoji: '🚗' },
+        { hanzi: '公共汽车', pinyin: 'gōng gòng qì chē', en: 'Bus',      id: 'Bus',       emoji: '🚌' },
+        { hanzi: '地铁',     pinyin: 'dì tiě',         en: 'Subway',     id: 'Kereta',    emoji: '🚇' },
+        { hanzi: '飞机',     pinyin: 'fēi jī',         en: 'Airplane',   id: 'Pesawat',   emoji: '✈️' },
+        { hanzi: '船',       pinyin: 'chuán',          en: 'Boat',       id: 'Perahu',    emoji: '🚢' },
+        { hanzi: '自行车',   pinyin: 'zì xíng chē',    en: 'Bicycle',    id: 'Sepeda',    emoji: '🚲' },
+        { hanzi: '摩托车',   pinyin: 'mó tuō chē',     en: 'Motorcycle', id: 'Motor',     emoji: '🏍️' },
+        { hanzi: '出租车',   pinyin: 'chū zū chē',     en: 'Taxi',       id: 'Taksi',     emoji: '🚕' },
+        { hanzi: '火车',     pinyin: 'huǒ chē',        en: 'Train',      id: 'Kereta api', emoji: '🚂' },
+        { hanzi: '直升机',   pinyin: 'zhí shēng jī',   en: 'Helicopter', id: 'Helikopter', emoji: '🚁' }
+      ]
+    },
+
+    /* 24 ─ Body Parts & Health ──────────────────────────────────────────── */
+    {
+      id: 'body',
+      name: 'Body & Health',
+      icon: '💪',
+      color: '#FF7043',
+      words: [
+        { hanzi: '头',   pinyin: 'tóu',     en: 'Head',    id: 'Kepala',   emoji: '🗣️' },
+        { hanzi: '眼睛', pinyin: 'yǎn jing', en: 'Eyes',   id: 'Mata',     emoji: '👀' },
+        { hanzi: '耳朵', pinyin: 'ěr duo',  en: 'Ears',    id: 'Telinga',  emoji: '👂' },
+        { hanzi: '鼻子', pinyin: 'bí zi',   en: 'Nose',    id: 'Hidung',   emoji: '👃' },
+        { hanzi: '嘴',   pinyin: 'zuǐ',     en: 'Mouth',   id: 'Mulut',    emoji: '👄' },
+        { hanzi: '手',   pinyin: 'shǒu',    en: 'Hand',    id: 'Tangan',   emoji: '✋' },
+        { hanzi: '脚',   pinyin: 'jiǎo',    en: 'Foot',    id: 'Kaki',     emoji: '🦶' },
+        { hanzi: '肚子', pinyin: 'dù zi',   en: 'Tummy',   id: 'Perut',    emoji: '🤰' },
+        { hanzi: '生病', pinyin: 'shēng bìng', en: 'Sick', id: 'Sakit',    emoji: '🤒' },
+        { hanzi: '健康', pinyin: 'jiàn kāng', en: 'Healthy', id: 'Sehat',  emoji: '💪' },
+        { hanzi: '发烧', pinyin: 'fā shāo', en: 'Fever',   id: 'Demam',    emoji: '🌡️' },
+        { hanzi: '吃药', pinyin: 'chī yào', en: 'Take medicine', id: 'Minum obat', emoji: '💊' }
+      ]
+    },
+
+    /* 25 ─ Daily Routine ────────────────────────────────────────────────── */
+    {
+      id: 'routine',
+      name: 'Daily Routine',
+      icon: '⏰',
+      color: '#26A69A',
+      words: [
+        { hanzi: '起床',   pinyin: 'qǐ chuáng',  en: 'Wake up',    id: 'Bangun tidur', emoji: '🌅' },
+        { hanzi: '刷牙',   pinyin: 'shuā yá',    en: 'Brush teeth', id: 'Sikat gigi',  emoji: '🪥' },
+        { hanzi: '洗脸',   pinyin: 'xǐ liǎn',    en: 'Wash face',  id: 'Cuci muka',    emoji: '🚿' },
+        { hanzi: '吃早饭', pinyin: 'chī zǎo fàn', en: 'Eat breakfast', id: 'Sarapan',  emoji: '🍳' },
+        { hanzi: '上学',   pinyin: 'shàng xué',  en: 'Go to school', id: 'Pergi sekolah', emoji: '🏫' },
+        { hanzi: '回家',   pinyin: 'huí jiā',    en: 'Go home',    id: 'Pulang',       emoji: '🏠' },
+        { hanzi: '做作业', pinyin: 'zuò zuò yè', en: 'Do homework', id: 'Kerjakan PR',  emoji: '📝' },
+        { hanzi: '洗澡',   pinyin: 'xǐ zǎo',     en: 'Take a bath', id: 'Mandi',       emoji: '🛁' },
+        { hanzi: '睡觉',   pinyin: 'shuì jiào',  en: 'Sleep',      id: 'Tidur',        emoji: '😴' },
+        { hanzi: '喝水',   pinyin: 'hē shuǐ',    en: 'Drink water', id: 'Minum air',   emoji: '💧' }
+      ]
     }
   ],
 
@@ -439,7 +567,44 @@ const MANDO_DATA = {
     { tokens: ['猫', '在', '沙发', '上'], pinyin: 'māo zài shā fā shang', en: 'The cat is on the sofa' },
     { tokens: ['我', '在', '家', '看', '电视'], pinyin: 'wǒ zài jiā kàn diàn shì', en: 'I watch TV at home' },
     { tokens: ['妈妈', '在', '厨房'],   pinyin: 'mā ma zài chú fáng', en: 'Mom is in the kitchen' },
-    { tokens: ['弟弟', '在', '玩', '玩具'], pinyin: 'dì di zài wán wán jù', en: 'Little brother is playing with toys' }
+    { tokens: ['弟弟', '在', '玩', '玩具'], pinyin: 'dì di zài wán wán jù', en: 'Little brother is playing with toys' },
+    /* Classroom */
+    { tokens: ['我', '忘', '带', '铅笔'],       pinyin: 'wǒ wàng dài qiān bǐ',       en: 'I forgot to bring my pencil' },
+    { tokens: ['老师', '好'],                   pinyin: 'lǎo shī hǎo',               en: 'Hello teacher' },
+    { tokens: ['我', '做完', '作业', '了'],     pinyin: 'wǒ zuò wán zuò yè le',      en: 'I finished my homework' },
+    { tokens: ['明天', '有', '考试'],           pinyin: 'míng tiān yǒu kǎo shì',     en: 'There is a test tomorrow' },
+    { tokens: ['我', '的', '书包', '很', '重'], pinyin: 'wǒ de shū bāo hěn zhòng',   en: 'My schoolbag is very heavy' },
+    /* Nature */
+    { tokens: ['今天', '下', '雨'],             pinyin: 'jīn tiān xià yǔ',           en: "It's raining today" },
+    { tokens: ['天空', '有', '星星'],           pinyin: 'tiān kōng yǒu xīng xing',   en: 'There are stars in the sky' },
+    { tokens: ['花', '很', '漂亮'],             pinyin: 'huā hěn piào liang',         en: 'The flowers are beautiful' },
+    { tokens: ['太阳', '出来', '了'],           pinyin: 'tài yáng chū lái le',        en: 'The sun is out' },
+    /* Clothes */
+    { tokens: ['我', '穿', '蓝色', '衬衫'],     pinyin: 'wǒ chuān lán sè chèn shān', en: 'I wear a blue shirt' },
+    { tokens: ['你', '的', '帽子', '很', '好看'], pinyin: 'nǐ de mào zi hěn hǎo kàn', en: 'Your hat looks nice' },
+    { tokens: ['外面', '冷', '穿', '外套'],     pinyin: 'wài miàn lěng chuān wài tào', en: "It's cold outside, wear a jacket" },
+    /* Transport */
+    { tokens: ['我', '坐', '地铁', '上学'],     pinyin: 'wǒ zuò dì tiě shàng xué',   en: 'I take the subway to school' },
+    { tokens: ['爸爸', '开', '汽车'],           pinyin: 'bà ba kāi qì chē',          en: 'Dad drives the car' },
+    { tokens: ['飞机', '飞', '得', '很', '快'], pinyin: 'fēi jī fēi de hěn kuài',    en: 'The airplane flies very fast' },
+    { tokens: ['我', '想', '坐', '火车'],       pinyin: 'wǒ xiǎng zuò huǒ chē',      en: 'I want to ride the train' },
+    /* Body & Health */
+    { tokens: ['我', '头', '疼'],               pinyin: 'wǒ tóu téng',               en: 'My head hurts' },
+    { tokens: ['我', '生病', '了'],             pinyin: 'wǒ shēng bìng le',          en: "I'm sick" },
+    { tokens: ['要', '多', '喝', '水'],         pinyin: 'yào duō hē shuǐ',           en: 'Drink more water' },
+    { tokens: ['我', '要', '去', '医院'],       pinyin: 'wǒ yào qù yī yuàn',         en: 'I need to go to the hospital' },
+    { tokens: ['洗', '手', '才', '吃饭'],       pinyin: 'xǐ shǒu cái chī fàn',       en: 'Wash hands before eating' },
+    /* Daily Routine */
+    { tokens: ['早上', '七点', '起床'],         pinyin: 'zǎo shang qī diǎn qǐ chuáng', en: 'Wake up at 7am' },
+    { tokens: ['我', '刷', '牙', '了'],         pinyin: 'wǒ shuā yá le',             en: 'I brushed my teeth' },
+    { tokens: ['晚上', '要', '早', '睡觉'],     pinyin: 'wǎn shang yào zǎo shuì jiào', en: 'Sleep early at night' },
+    { tokens: ['我', '每天', '做', '作业'],     pinyin: 'wǒ měi tiān zuò zuò yè',    en: 'I do homework every day' },
+    { tokens: ['放学', '后', '回', '家'],       pinyin: 'fàng xué hòu huí jiā',      en: 'Go home after school' },
+    /* Mixed / conversational */
+    { tokens: ['我', '不', '知道'],             pinyin: 'wǒ bù zhī dào',             en: "I don't know" },
+    { tokens: ['对', '不', '对'],               pinyin: 'duì bù duì',                en: 'Is that right?' },
+    { tokens: ['我', '听', '不', '懂'],         pinyin: 'wǒ tīng bù dǒng',           en: "I don't understand" },
+    { tokens: ['可以', '再', '说', '一次', '吗'], pinyin: 'kě yǐ zài shuō yī cì ma', en: 'Can you say it again?' }
   ],
 
   /* ─ Dragon mascot phrases (English, kid-friendly) ────────────────────── */
