@@ -159,6 +159,9 @@ img { -webkit-user-drag: none; }
 }
 .cat-card .cc-lock .lk { font-size: 34px; }
 .cat-card .cc-stars { font-size: 13px; color: var(--star); font-weight: 800; }
+.cat-card.galaxy-card { background: linear-gradient(135deg,#1a0533,#0d1b4b); color: #fff; grid-column: 1/-1; }
+.cat-card.galaxy-card .cc-name { color: #e0b0ff; }
+.cat-card.galaxy-card .cc-pct { color: #b39ddb; }
 
 /* full-width tile (sentence builder) */
 .tile {

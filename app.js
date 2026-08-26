@@ -262,6 +262,19 @@ function renderHome() {
     if (unlocked) card.onclick = () => goCategory(c.id);
     grid.appendChild(card);
   });
+
+  // Galaxy Mix tile — appears once 3+ topics are unlocked
+  const unlockedCats = MANDO_DATA.categories.filter((_, i) => isUnlocked(i));
+  if (unlockedCats.length >= 3) {
+    const gCard = el('div', 'cat-card galaxy-card');
+    gCard.innerHTML =
+      '<span class="cc-icon">🌌</span>' +
+      '<span class="cc-name">Galaxy Mix</span>' +
+      '<div class="cc-bar"><div class="cc-fill" style="width:100%;background:linear-gradient(90deg,#7C4DFF,#FF4081)"></div></div>' +
+      '<span class="cc-pct">Mix all!</span>';
+    gCard.onclick = launchGalaxy;
+    grid.appendChild(gCard);
+  }
 }
 
 /* ── difficulty tiers (per-topic ramp) ───────────────────────────────────
@@ -317,12 +330,23 @@ const MODES = [
   { key: 'hunt',   name: 'Hanzi Hunt',     sub: 'Beat the clock',   emoji: '⚡', color: 'var(--grape)' },
   { key: 'speak',  name: 'Speak!',         sub: 'Say it out loud',  emoji: '🎤', color: 'var(--brand-2)' }
 ];
+function launchGalaxy() {
+  const pool = [];
+  MANDO_DATA.categories.forEach((c, i) => {
+    if (isUnlocked(i)) c.words.forEach(w => pool.push(Object.assign({}, w, { _src: c.id })));
+  });
+  const words = sample(pool, Math.min(20, pool.length));
+  MANDO_DATA._virtual['_galaxy'] = { id: '_galaxy', name: 'Galaxy Mix', icon: '🌌', color: '#7C4DFF', words };
+  goCategory('_galaxy');
+}
+
 function renderCategory(catId) {
   const cat = MANDO_DATA.getCategory(catId);
+  const isGalaxy = catId === '_galaxy';
   $('#cat-title').textContent = cat.icon + ' ' + cat.name;
-  $('#cat-mastery').textContent = categoryMastery(catId) + '%';
+  $('#cat-mastery').textContent = isGalaxy ? cat.words.length + ' words' : categoryMastery(catId) + '%';
   mountDragon($('#cat-dragon'));
-  $('#cat-speech').textContent = TIER_BADGE[catTier(catId)] + ' • Choose a game! 🎮';
+  $('#cat-speech').textContent = (isGalaxy ? '🌌 Mix from all topics' : TIER_BADGE[catTier(catId)]) + ' • Choose a game! 🎮';
   const list = $('#mode-list'); list.innerHTML = '';
   MODES.forEach(mo => {
     const best = getBest(catId, mo.key);

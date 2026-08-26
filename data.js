@@ -1,6 +1,6 @@
 /* ===========================================================================
    MandoQuest — data.js
-   All learning content: 25 categories (275 words) + sentence builder set (58).
+   All learning content: 30 categories (327 words) + sentence builder set (68).
    Each word: hanzi, pinyin, en (English), id (Indonesian, hidden in UI),
               emoji (visual; '' falls back to the English word badge),
               swatch (optional hex — colors render a real colored circle).
@@ -533,6 +533,108 @@ const MANDO_DATA = {
         { hanzi: '睡觉',   pinyin: 'shuì jiào',  en: 'Sleep',      id: 'Tidur',        emoji: '😴' },
         { hanzi: '喝水',   pinyin: 'hē shuǐ',    en: 'Drink water', id: 'Minum air',   emoji: '💧' }
       ]
+    },
+
+    /* 26 ─ Professions ──────────────────────────────────────────────────── */
+    {
+      id: 'professions',
+      name: 'Professions',
+      icon: '👨‍⚕️',
+      color: '#039BE5',
+      words: [
+        { hanzi: '医生',   pinyin: 'yī shēng',       en: 'Doctor',      id: 'Dokter',   emoji: '👨‍⚕️' },
+        { hanzi: '护士',   pinyin: 'hù shi',         en: 'Nurse',       id: 'Perawat',  emoji: '👩‍⚕️' },
+        { hanzi: '警察',   pinyin: 'jǐng chá',       en: 'Police',      id: 'Polisi',   emoji: '👮' },
+        { hanzi: '厨师',   pinyin: 'chú shī',        en: 'Chef',        id: 'Koki',     emoji: '👨‍🍳' },
+        { hanzi: '司机',   pinyin: 'sī jī',          en: 'Driver',      id: 'Sopir',    emoji: '🚗' },
+        { hanzi: '消防员', pinyin: 'xiāo fáng yuán', en: 'Firefighter', id: 'Pemadam',  emoji: '🚒' },
+        { hanzi: '老板',   pinyin: 'lǎo bǎn',        en: 'Boss',        id: 'Bos',      emoji: '💼' },
+        { hanzi: '工人',   pinyin: 'gōng rén',       en: 'Worker',      id: 'Pekerja',  emoji: '🔨' },
+        { hanzi: '画家',   pinyin: 'huà jiā',        en: 'Artist',      id: 'Pelukis',  emoji: '🎨' },
+        { hanzi: '歌手',   pinyin: 'gē shǒu',        en: 'Singer',      id: 'Penyanyi', emoji: '🎤' }
+      ]
+    },
+
+    /* 27 ─ School Subjects ──────────────────────────────────────────────── */
+    {
+      id: 'subjects',
+      name: 'School Subjects',
+      icon: '📚',
+      color: '#F4511E',
+      words: [
+        { hanzi: '数学', pinyin: 'shù xué',  en: 'Math',     id: 'Matematika', emoji: '🔢' },
+        { hanzi: '语文', pinyin: 'yǔ wén',   en: 'Chinese',  id: 'Bahasa Mandarin', emoji: '📖' },
+        { hanzi: '英语', pinyin: 'yīng yǔ',  en: 'English',  id: 'Bahasa Inggris',  emoji: '🇬🇧' },
+        { hanzi: '音乐', pinyin: 'yīn yuè',  en: 'Music',    id: 'Musik',      emoji: '🎵' },
+        { hanzi: '体育', pinyin: 'tǐ yù',    en: 'PE',       id: 'Olahraga',   emoji: '⚽' },
+        { hanzi: '美术', pinyin: 'měi shù',  en: 'Art',      id: 'Kesenian',   emoji: '🖌️' },
+        { hanzi: '科学', pinyin: 'kē xué',   en: 'Science',  id: 'IPA',        emoji: '🔬' },
+        { hanzi: '历史', pinyin: 'lì shǐ',   en: 'History',  id: 'Sejarah',    emoji: '📜' }
+      ]
+    },
+
+    /* 28 ─ Shapes ───────────────────────────────────────────────────────── */
+    {
+      id: 'shapes',
+      name: 'Shapes',
+      icon: '🔷',
+      color: '#6D4C41',
+      words: [
+        { hanzi: '圆形',   pinyin: 'yuán xíng',       en: 'Circle',    id: 'Lingkaran',     emoji: '⭕' },
+        { hanzi: '正方形', pinyin: 'zhèng fāng xíng', en: 'Square',    id: 'Persegi',        emoji: '🟦' },
+        { hanzi: '三角形', pinyin: 'sān jiǎo xíng',   en: 'Triangle',  id: 'Segitiga',       emoji: '🔺' },
+        { hanzi: '长方形', pinyin: 'cháng fāng xíng', en: 'Rectangle', id: 'Persegi panjang', emoji: '📄' },
+        { hanzi: '心形',   pinyin: 'xīn xíng',        en: 'Heart',     id: 'Hati',           emoji: '❤️' },
+        { hanzi: '星形',   pinyin: 'xīng xíng',       en: 'Star',      id: 'Bintang',        emoji: '⭐' },
+        { hanzi: '椭圆形', pinyin: 'tuǒ yuán xíng',   en: 'Oval',      id: 'Oval',           emoji: '🥚' },
+        { hanzi: '菱形',   pinyin: 'líng xíng',       en: 'Diamond',   id: 'Berlian',        emoji: '💎' }
+      ]
+    },
+
+    /* 29 ─ Months & Seasons ─────────────────────────────────────────────── */
+    {
+      id: 'months',
+      name: 'Months & Seasons',
+      icon: '📅',
+      color: '#00897B',
+      words: [
+        { hanzi: '春天',   pinyin: 'chūn tiān', en: 'Spring',    id: 'Musim semi',   emoji: '🌸' },
+        { hanzi: '夏天',   pinyin: 'xià tiān',  en: 'Summer',    id: 'Musim panas',  emoji: '☀️' },
+        { hanzi: '秋天',   pinyin: 'qiū tiān',  en: 'Autumn',    id: 'Musim gugur',  emoji: '🍂' },
+        { hanzi: '冬天',   pinyin: 'dōng tiān', en: 'Winter',    id: 'Musim dingin', emoji: '❄️' },
+        { hanzi: '一月',   pinyin: 'yī yuè',    en: 'January',   id: 'Januari',      emoji: '🎍' },
+        { hanzi: '二月',   pinyin: 'èr yuè',    en: 'February',  id: 'Februari',     emoji: '❤️' },
+        { hanzi: '三月',   pinyin: 'sān yuè',   en: 'March',     id: 'Maret',        emoji: '🌸' },
+        { hanzi: '四月',   pinyin: 'sì yuè',    en: 'April',     id: 'April',        emoji: '🌧️' },
+        { hanzi: '五月',   pinyin: 'wǔ yuè',    en: 'May',       id: 'Mei',          emoji: '🌻' },
+        { hanzi: '六月',   pinyin: 'liù yuè',   en: 'June',      id: 'Juni',         emoji: '☀️' },
+        { hanzi: '七月',   pinyin: 'qī yuè',    en: 'July',      id: 'Juli',         emoji: '🌊' },
+        { hanzi: '八月',   pinyin: 'bā yuè',    en: 'August',    id: 'Agustus',      emoji: '🎆' },
+        { hanzi: '九月',   pinyin: 'jiǔ yuè',   en: 'September', id: 'September',    emoji: '🍂' },
+        { hanzi: '十月',   pinyin: 'shí yuè',   en: 'October',   id: 'Oktober',      emoji: '🎃' },
+        { hanzi: '十一月', pinyin: 'shí yī yuè', en: 'November', id: 'November',     emoji: '🍁' },
+        { hanzi: '十二月', pinyin: 'shí èr yuè', en: 'December', id: 'Desember',     emoji: '🎄' }
+      ]
+    },
+
+    /* 30 ─ Kitchen & Cooking ─────────────────────────────────────────────── */
+    {
+      id: 'kitchen',
+      name: 'Kitchen & Cooking',
+      icon: '🍳',
+      color: '#FB8C00',
+      words: [
+        { hanzi: '碗',   pinyin: 'wǎn',     en: 'Bowl',        id: 'Mangkuk',  emoji: '🥣' },
+        { hanzi: '筷子', pinyin: 'kuài zi', en: 'Chopsticks',  id: 'Sumpit',   emoji: '🥢' },
+        { hanzi: '勺子', pinyin: 'sháo zi', en: 'Spoon',       id: 'Sendok',   emoji: '🥄' },
+        { hanzi: '锅',   pinyin: 'guō',     en: 'Pot',         id: 'Panci',    emoji: '🍳' },
+        { hanzi: '盘子', pinyin: 'pán zi',  en: 'Plate',       id: 'Piring',   emoji: '🍽️' },
+        { hanzi: '杯子', pinyin: 'bēi zi',  en: 'Cup',         id: 'Gelas',    emoji: '🥤' },
+        { hanzi: '切',   pinyin: 'qiē',     en: 'Cut',         id: 'Memotong', emoji: '🔪' },
+        { hanzi: '煮',   pinyin: 'zhǔ',     en: 'Boil',        id: 'Memasak',  emoji: '♨️' },
+        { hanzi: '炒',   pinyin: 'chǎo',    en: 'Stir-fry',    id: 'Menumis',  emoji: '🥘' },
+        { hanzi: '做饭', pinyin: 'zuò fàn', en: 'Cook a meal', id: 'Masak',    emoji: '👨‍🍳' }
+      ]
     }
   ],
 
@@ -604,7 +706,18 @@ const MANDO_DATA = {
     { tokens: ['我', '不', '知道'],             pinyin: 'wǒ bù zhī dào',             en: "I don't know" },
     { tokens: ['对', '不', '对'],               pinyin: 'duì bù duì',                en: 'Is that right?' },
     { tokens: ['我', '听', '不', '懂'],         pinyin: 'wǒ tīng bù dǒng',           en: "I don't understand" },
-    { tokens: ['可以', '再', '说', '一次', '吗'], pinyin: 'kě yǐ zài shuō yī cì ma', en: 'Can you say it again?' }
+    { tokens: ['可以', '再', '说', '一次', '吗'], pinyin: 'kě yǐ zài shuō yī cì ma', en: 'Can you say it again?' },
+    /* Professions / Subjects / Shapes / Months / Kitchen */
+    { tokens: ['我', '想', '当', '医生'],         pinyin: 'wǒ xiǎng dāng yī shēng',   en: 'I want to be a doctor' },
+    { tokens: ['他', '是', '警察'],               pinyin: 'tā shì jǐng chá',           en: 'He is a police officer' },
+    { tokens: ['我', '最', '喜欢', '数学'],       pinyin: 'wǒ zuì xǐ huan shù xué',   en: 'I like math the most' },
+    { tokens: ['体育课', '很', '好玩'],           pinyin: 'tǐ yù kè hěn hǎo wán',     en: 'PE class is fun' },
+    { tokens: ['这', '是', '圆形'],               pinyin: 'zhè shì yuán xíng',         en: 'This is a circle' },
+    { tokens: ['现在', '是', '夏天'],             pinyin: 'xiàn zài shì xià tiān',     en: "It's summer now" },
+    { tokens: ['我', '的', '生日', '是', '三月'], pinyin: 'wǒ de shēng rì shì sān yuè', en: 'My birthday is in March' },
+    { tokens: ['妈妈', '在', '炒菜'],             pinyin: 'mā ma zài chǎo cài',        en: 'Mom is stir-frying' },
+    { tokens: ['我', '用', '筷子', '吃饭'],       pinyin: 'wǒ yòng kuài zi chī fàn',  en: 'I eat with chopsticks' },
+    { tokens: ['八月', '是', '暑假'],             pinyin: 'bā yuè shì shǔ jià',        en: 'August is summer vacation' }
   ],
 
   /* ─ Dragon mascot phrases (English, kid-friendly) ────────────────────── */
@@ -622,7 +735,8 @@ MANDO_DATA.allWords = MANDO_DATA.categories.reduce(
   (acc, c) => acc.concat(c.words.map(w => ({ ...w, cat: c.id }))), []
 );
 
-/* Quick lookup of a category by id. */
+/* Quick lookup of a category by id. Also checks _virtual for Galaxy Mix. */
+MANDO_DATA._virtual = {};
 MANDO_DATA.getCategory = function (id) {
-  return MANDO_DATA.categories.find(c => c.id === id);
+  return MANDO_DATA._virtual[id] || MANDO_DATA.categories.find(c => c.id === id);
 };
