@@ -15,24 +15,26 @@ A fun, colorful Mandarin-learning game built for **Matthew** (age 8). Pure HTML 
 ### On a tablet or phone (recommended for Matthew)
 The app works best when "installed" like a real app:
 
-1. Put the `MandoQuest` folder onto the device (or host the files — see below).
-2. Open `index.html` in **Chrome**.
+1. Host the `MandoQuest` folder on an **HTTPS** website.
+2. Open that HTTPS address in **Chrome**.
 3. Tap the **⋮ menu → "Add to Home screen"** (or "Install app").
 4. A 🐉 MandoQuest icon appears on the home screen. Open it like any app — full screen, no browser bars.
 
-### Easiest way to put it on a tablet
-Because phones/tablets can't open a folder's `index.html` directly, serve it from the computer once:
+> HTTPS is required for microphone recognition, installation, and reliable offline caching. A plain `http://192.168...` Wi-Fi address may open the page, but it cannot provide the full installed-app behavior.
+
+### Local development on a computer
+For testing on the same computer, `localhost` is treated as secure by Chrome:
 
 ```bash
 cd MandoQuest
 python3 -m http.server 8000
 ```
 
-Then on the tablet (same Wi-Fi), open `http://<computer-ip>:8000` in Chrome and "Add to Home screen". After the first open it works **offline**.
+Then open `http://localhost:8000` on that computer. For Android installation, deploy the same folder to HTTPS first.
 
 ---
 
-## 🎮 The 5 games
+## 🎮 The 6 games
 
 | Game | What Matthew does |
 |------|-------------------|
@@ -41,8 +43,9 @@ Then on the tablet (same Wi-Fi), open `http://<computer-ip>:8000` in Chrome and 
 | ⚡ **Hanzi Hunt** | Race the clock: hear a word, tap the right character fast! |
 | 🎤 **Speak!** | Say the word out loud — the dragon listens and checks it. |
 | 🧩 **Sentence Builder** | Tap the word-cards in order to build a sentence (e.g. 我 + 叫 + Matthew). |
+| 🗣️ **Pattern Drill** | Pick the missing word to practise reusable sentence frames. |
 
-**14 topics:** Greetings · Numbers · Colors · Animals · Food · Family · School · Body · Weather · People & Me · Actions · Time · Transport · Describe. (155 words + 13 sentences, curated HSK 1–2.)
+**30 topics:** 327 words, 68 sentence-builder prompts, and 18 reusable patterns with 88 drills, curated for beginner Mandarin.
 
 ---
 
@@ -62,7 +65,7 @@ To reset all progress: in the browser, clear site data, or run `localStorage.cle
 - **Audio = bundled clear-voice pack.** Every word and sentence ships as a pre-recorded clip in `audio/` (a native **Mainland Mandarin / 普通话** voice, matching the simplified characters used in the app and Matthew's HSK direction). The app plays the clip; if a clip is ever missing or blocked, it automatically **falls back to the browser's built-in voice** (Web Speech API), so audio never fully breaks. After the first time a clip plays, it's cached for offline use.
 - **Music & sound effects.** Gentle background music and reward/tap sounds are **synthesised live** in the browser (Web Audio API — no audio files, fully offline). Tap the **🔊 / 🔇** button (top-right) to turn them on or off; the choice is remembered. This toggle never silences the word **pronunciation** — that always plays.
 - **Speaking game** (🎤) needs **microphone permission** and an **internet connection** (the browser's speech recognition runs online). All other games work fully offline.
-- Best supported on **Chrome / Edge**. Safari has limited speech-recognition support — the other 4 games still work.
+- Best supported on **Chrome / Edge**. Safari has limited speech-recognition support — the other 5 games still work.
 
 ### ➕ Adding new words — or a whole new topic (level)
 All the learning content lives in **one file: `data.js`**. You don't need to touch any other code.
@@ -84,7 +87,7 @@ All the learning content lives in **one file: `data.js`**. You don't need to tou
    cd MandoQuest
    node tools/gen-audio.js
    ```
-2. **Bump the cache number** in `sw.js`: change `const CACHE = 'mandoquest-v5';` to `v6` (then `v7` next time, and so on). **This step matters** — it forces the app to discard old cached audio so the new words always say the right thing.
+2. **Bump the cache number** in `sw.js` to the next version. **This step matters** — it forces the app to discard old cached audio so the new words always say the right thing.
 3. **Open the app and check** — the new topic/words should appear, with sound.
 
 > Tip: choose **concrete words that have a clear emoji/picture** (animals, food, objects). Abstract grammar words (的 / 了 / 吗) don't work well in a picture-matching game.
@@ -113,7 +116,8 @@ MandoQuest/
 ├── index.html         app shell + dragon mascot
 ├── style.css          kid-first visual design
 ├── data.js            all words, sentences & phrases
-├── app.js             game engine + 5 game modes
+├── speech.js          tested speech matching + turn guard
+├── app.js             game engine + 6 game modes
 ├── manifest.json      makes it installable as an app
 ├── sw.js              offline cache (service worker)
 ├── icons/icon.svg     the dragon app icon

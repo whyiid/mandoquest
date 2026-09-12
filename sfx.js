@@ -90,6 +90,22 @@
     if (bgmGain && ctx) { try { bgmGain.gain.setTargetAtTime(0.0, ctx.currentTime, 0.3); } catch (e) {} }
   }
 
+  // The phone speaker and microphone are physically close. Hard-mute the BGM
+  // while speech recognition is active so the recognizer hears the child, not
+  // the app's own notes. This is intentionally faster than stopBGM's soft fade.
+  function pauseForSpeech() {
+    if (bgmTimer) { clearInterval(bgmTimer); bgmTimer = null; }
+    if (bgmGain && ctx) {
+      try {
+        bgmGain.gain.cancelScheduledValues(ctx.currentTime);
+        bgmGain.gain.setValueAtTime(0.0, ctx.currentTime);
+      } catch (e) {}
+    }
+  }
+  function resumeAfterSpeech() {
+    if (on && started && !document.hidden) startBGM();
+  }
+
   /* ── on/off (persisted) ────────────────────────────────────────────── */
   function setOn(v) {
     on = !!v;
@@ -117,6 +133,8 @@
 
   window.MandoSFX = {
     correct: correct, wrong: wrong, tap: tap, win: win, unlock: unlock,
-    startBGM: startBGM, stopBGM: stopBGM, setOn: setOn, toggle: toggle, isOn: isOn
+    startBGM: startBGM, stopBGM: stopBGM,
+    pauseForSpeech: pauseForSpeech, resumeAfterSpeech: resumeAfterSpeech,
+    setOn: setOn, toggle: toggle, isOn: isOn
   };
 })();
