@@ -1,8 +1,8 @@
 /* ===========================================================================
    MandoQuest — app.js
-   Core engine + 5 game modes. Vanilla JS, no dependencies.
+   Core engine + 6 game modes. Vanilla JS, no dependencies.
    Sections:  Utils · TTS/Speech · State · Gamification · Router ·
-              Home · Category · Modes (Match/Listen/Hunt/Speak/Sentence) ·
+              Home · Category · Modes (Match/Listen/Hunt/Speak/Sentence/Pattern) ·
               Results · Init
    =========================================================================== */
 'use strict';
@@ -84,10 +84,15 @@ function listenOnce(onResult, onError) {
   if (!speechSupported) { onError('unsupported'); return null; }
   let r;
   try { r = new SRClass(); } catch (e) { onError('unsupported'); return null; }
-  r.lang = 'cmn-Hans-CN'; r.interimResults = false; r.maxAlternatives = 3; r.continuous = false;
+  r.lang = 'zh-CN'; r.interimResults = false; r.maxAlternatives = 3; r.continuous = false;
   let settled = false;
-  const settle = fn => (...args) => { if (settled) return; settled = true; clearTimeout(timer); fn(...args); };
-  const timer = setTimeout(settle(() => { try { r.abort(); } catch (_) {} onError('network'); }), 12000);
+  let hardTimer = null, stopTimer = null;
+  const settle = fn => (...args) => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(hardTimer); clearTimeout(stopTimer);
+    fn(...args);
+  };
   r.onresult = settle(e => {
     const alts = [], res = e.results[0];
     for (let i = 0; i < res.length; i++) alts.push(res[i].transcript);
@@ -95,32 +100,19 @@ function listenOnce(onResult, onError) {
   });
   r.onerror = settle(e => onError(e.error || 'error'));
   r.onend = settle(() => onError('no-speech'));
-  setTimeout(() => {
-    try { r.start(); } catch (e) { settled = true; clearTimeout(timer); onError('error'); return; }
-    setTimeout(() => { try { r.stop(); } catch (_) {} }, 6000);   // let onresult fire, don't hang to 12s abort
-  }, 300);
+  // Start inside the tap event. Delaying this can lose Android's transient user
+  // activation before Chrome requests microphone permission.
+  try { r.start(); } catch (e) { settled = true; onError('error'); return null; }
+  stopTimer = setTimeout(() => { try { r.stop(); } catch (_) {} }, 6000);
+  hardTimer = setTimeout(settle(() => { try { r.abort(); } catch (_) {} onError('network'); }), 12000);
   return r;
 }
-function normHan(s) { return (s || '').replace(/[^一-鿿A-Za-z0-9]/g, ''); }
-const NUM_TO_HAN = {'1000':'千','100':'百','10':'十','0':'零','1':'一','2':'二','3':'三','4':'四','5':'五','6':'六','7':'七','8':'八','9':'九'};
-function numToHan(s) { return (s||'').replace(/1000|100|10|\d/g, m => NUM_TO_HAN[m] || m); }
-function toneless(s) { return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z]/g, ''); }
-function speechMatch(alts, w) {
-  const t = normHan(w.hanzi), tpy = toneless(w.pinyin);
-  return alts.some(a => {
-    const x = normHan(numToHan(a));
-    if (x && (x === t || x.includes(t) || t.includes(x))) return true;
-    let common = 0;
-    for (const ch of t) if (x.indexOf(ch) !== -1) common++;
-    if (t.length && common >= Math.ceil(t.length / 2)) return true;
-    const apy = toneless(a);                                     // recognizer sometimes returns latin pinyin
-    return apy && tpy && (apy.includes(tpy) || tpy.includes(apy));
-  });
-}
+const speechMatch = window.MandoSpeech.matchesSpeech;
+const createSpeechGuard = window.MandoSpeech.createSingleUseGuard;
 
 /* ── Persistent state ────────────────────────────────────────────────── */
 const SAVE_KEY = 'mandoquest.v1';
-const DEFAULT_STATE = { progress: {}, streak: { count: 0, last: '' }, sentence: { best: 0 }, patterns: {}, unlockSeen: [] };
+const DEFAULT_STATE = { progress: {}, streak: { count: 0, last: '' }, sentence: { best: 0 }, patterns: {}, unlockSeen: [], gateV2: false };
 let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
 function load() {
   try {
@@ -141,19 +133,45 @@ function getBest(id, mode) { return (state.progress[id] && state.progress[id].st
 // right, never how often it was answered wrong, so replaying a topic at 40%
 // accuracy still crept to 100% and unlocked the next one. Stars carry accuracy,
 // so they are the only gate now.
-function categoryMastery(id) {
+function categoryStars(id) {
   const p = state.progress[id];
-  if (!p) return 0;
+  if (!p || !p.stars) return 0;
   let stars = 0;
   MODES.forEach(mo => { stars += p.stars[mo.key] || 0; });
-  return Math.round(stars / (MODES.length * 3) * 100);
+  return stars;
 }
+function maxStars() { return MODES.length * 3; }
+function categoryMastery(id) { return Math.round(categoryStars(id) / maxStars() * 100); }
+// Stars needed to open the next topic — 80% of 12, shown as a count because
+// "10 of 12 stars" is something a child can act on and "83%" is not.
+function starsToUnlock() { return Math.ceil(maxStars() * 0.8); }
 // A topic already opened stays open — tightening the gate must not take away
 // what Matthew reached under the old rules. New topics must earn it.
 function isUnlocked(i) {
   if (i === 0) return true;
   if (state.unlockSeen.indexOf(MANDO_DATA.categories[i].id) !== -1) return true;
-  return categoryMastery(MANDO_DATA.categories[i - 1].id) >= 80;
+  return categoryStars(MANDO_DATA.categories[i - 1].id) >= starsToUnlock();
+}
+
+// One-time repair. The old gate also accepted word exposure — how OFTEN a word
+// was answered right, never how often it was answered wrong — and `unlockSeen`
+// only ever recorded a topic on the device that was open when it unlocked. So
+// tightening the gate re-locked topics that were genuinely open before. The old
+// rule is recomputed here from the saved word counts and anything it had opened
+// is written into unlockSeen, once. Nothing new is granted: from here on a topic
+// opens only by earning stars.
+function migrateUnlocks() {
+  if (state.gateV2) return;
+  MANDO_DATA.categories.forEach((c, i) => {
+    if (i === 0 || state.unlockSeen.indexOf(c.id) !== -1) return;
+    const prev = MANDO_DATA.categories[i - 1], p = state.progress[prev.id];
+    if (!p || !p.words) return;
+    let sum = 0;
+    prev.words.forEach(w => { sum += Math.min(p.words[w.hanzi] || 0, 3); });
+    if (sum / (prev.words.length * 3) * 100 >= 80) state.unlockSeen.push(c.id);
+  });
+  state.gateV2 = true;
+  save();
 }
 function totalStars() {
   let s = state.sentence.best || 0;
@@ -256,14 +274,16 @@ function renderHome() {
   const grid = $('#cat-grid'); grid.innerHTML = '';
   MANDO_DATA.categories.forEach((c, idx) => {
     const m = categoryMastery(c.id), unlocked = isUnlocked(idx);
+    const st = categoryStars(c.id);
     const card = el('div', 'cat-card' + (unlocked ? '' : ' locked'));
     card.innerHTML =
       '<span class="cc-icon">' + c.icon + '</span>' +
       '<span class="cc-name">' + c.name + '</span>' +
       '<div class="cc-bar"><div class="cc-fill" style="width:' + m + '%;background:' + c.color + '"></div></div>' +
-      '<span class="cc-pct">' + m + '%</span>' +
+      '<span class="cc-pct">' + st + '/' + maxStars() + ' ⭐</span>' +
       (unlocked ? '' :
-        '<div class="cc-lock"><span class="lk">🔒</span>Reach 80% in ' + MANDO_DATA.categories[idx - 1].name + '</div>');
+        '<div class="cc-lock"><span class="lk">🔒</span>Get ' + starsToUnlock() + ' of ' + maxStars() +
+         ' ⭐ in ' + MANDO_DATA.categories[idx - 1].name + '</div>');
     if (unlocked) card.onclick = () => goCategory(c.id);
     grid.appendChild(card);
   });
@@ -349,7 +369,9 @@ function renderCategory(catId) {
   const cat = MANDO_DATA.getCategory(catId);
   const isGalaxy = catId === '_galaxy';
   $('#cat-title').textContent = cat.icon + ' ' + cat.name;
-  $('#cat-mastery').textContent = isGalaxy ? cat.words.length + ' words' : categoryMastery(catId) + '%';
+  $('#cat-mastery').textContent = isGalaxy
+    ? cat.words.length + ' words'
+    : categoryStars(catId) + '/' + maxStars() + ' ⭐';
   mountDragon($('#cat-dragon'));
   $('#cat-speech').textContent = (isGalaxy ? '🌌 Mix from all topics' : TIER_BADGE[catTier(catId)]) + ' • Choose a game! 🎮';
   const list = $('#mode-list'); list.innerHTML = '';
@@ -359,7 +381,7 @@ function renderCategory(catId) {
     card.innerHTML =
       '<span class="m-emoji" style="background:' + mo.color + '">' + mo.emoji + '</span>' +
       '<div><div class="m-name">' + mo.name + '</div><div class="m-sub">' + mo.sub + '</div>' +
-      '<div class="m-stars">' + (best ? '⭐'.repeat(best) : '☆☆☆') + '</div></div>';
+      '<div class="m-stars">' + '⭐'.repeat(best) + '☆'.repeat(3 - best) + '</div></div>';
     card.onclick = () => launch(mo.key, catId);
     list.appendChild(card);
   });
@@ -573,11 +595,30 @@ function modeSpeak(catId) {
   currentGame = { catId, replay: () => { showScreen('screen-game'); modeSpeak(catId); } };
   const cat = MANDO_DATA.getCategory(catId);
   const qs = sample(cat.words, Math.min(6, cat.words.length));
-  let i = 0, correct = 0, rec = null;
+  let i = 0, correct = 0, rec = null, activeGuard = null;
+
+  const pauseForSpeech = () => {
+    const audio = window.MandoSFX;
+    if (audio && audio.pauseForSpeech) audio.pauseForSpeech();
+  };
+  const resumeAfterSpeech = () => {
+    const audio = window.MandoSFX;
+    if (audio && audio.resumeAfterSpeech) audio.resumeAfterSpeech();
+  };
+  const abortRecognition = () => {
+    const current = rec;
+    rec = null;
+    try { if (current && current.abort) current.abort(); } catch (e) {}
+  };
 
   function show() {
+    abortRecognition();
+    resumeAfterSpeech();
     if (i >= qs.length) { finishRound({ catId, mode: 'speak', correct, total: qs.length }); return; }
     const w = qs[i];
+    const guard = createSpeechGuard();
+    activeGuard = guard;
+    const canRecognize = speechSupported && navigator.onLine && window.isSecureContext !== false;
     setDots(qs.length, i);
     $('#game-score').textContent = correct;
     gameRender(
@@ -591,13 +632,30 @@ function modeSpeak(catId) {
         '<div class="heard" id="sp-heard"></div>' +
         '<button class="btn ghost" id="sp-skip" style="margin-top:6px">Skip ➜</button>' +
       '</div>',
-      speechSupported ? 'Press 🎤 and say it!' : 'Say it out loud, then tap ✅');
+      canRecognize ? 'Press 🎤 and say it!' : 'Say it out loud, then tap ✅');
 
     $('#sp-hear').onclick = () => speak(w.hanzi);
     speak(w.hanzi);
-    $('#sp-skip').onclick = () => { i++; show(); };
 
-    const mic = $('#sp-mic'), fb = $('#sp-fb'), heard = $('#sp-heard');
+    const mic = $('#sp-mic'), fb = $('#sp-fb'), heard = $('#sp-heard'), skip = $('#sp-skip');
+    let listening = false, retried = false;
+
+    const disableTurn = () => {
+      mic.disabled = true;
+      skip.disabled = true;
+      mic.classList.remove('listening');
+    };
+    const markCorrect = () => guard.run(() => {
+      disableTurn(); abortRecognition(); resumeAfterSpeech();
+      fb.className = 'feedback-line good'; fb.textContent = '✅ ' + pick(['Hebat!', 'Great!', 'Perfect!', 'Wow!']);
+      correct++; addWordCorrect(catId, w.hanzi); sfx('correct'); reactGame('excited'); confetti();
+      setTimeout(() => { i++; show(); }, 1200);
+    });
+
+    skip.onclick = () => guard.run(() => {
+      disableTurn(); abortRecognition(); resumeAfterSpeech();
+      i++; show();
+    });
 
     // Self-report pass: child taps ✅ to confirm they said it. Used when speech
     // recognition can't work — no API support, OR offline: Web Speech streams
@@ -605,37 +663,45 @@ function modeSpeak(catId) {
     // every time. Matthew plays as an installed PWA offline, so this is the
     // normal path for him, not just a fallback.
     const passBtn = hint => {
-      mic.textContent = '✅'; mic.classList.remove('listening');
+      abortRecognition(); resumeAfterSpeech(); listening = false;
+      mic.disabled = false; mic.textContent = '✅'; mic.classList.remove('listening');
       fb.className = 'feedback-line'; fb.textContent = hint || 'Tap ✅ when you said it 😊'; heard.textContent = '';
-      mic.onclick = () => {
-        fb.className = 'feedback-line good'; fb.textContent = '✅ ' + pick(['Hebat!', 'Great!', 'Perfect!', 'Wow!']);
-        correct++; addWordCorrect(catId, w.hanzi); sfx('correct'); reactGame('excited'); confetti();
-        setTimeout(() => { i++; show(); }, 1000);
-      };
+      mic.onclick = markCorrect;
     };
 
-    if (!speechSupported || !navigator.onLine) { passBtn(); return; }
+    if (!canRecognize) {
+      const hint = window.isSecureContext === false
+        ? '🎤 Voice checking needs HTTPS — tap ✅ after you say it!'
+        : null;
+      passBtn(hint); return;
+    }
 
-    let retried = false;
     const startListen = () => {
+      if (!guard.isOpen() || listening) return;
+      listening = true; mic.disabled = true;
       stopAudio(); if ('speechSynthesis' in window) speechSynthesis.cancel();   // free the audio channel before mic
+      pauseForSpeech();
       mic.classList.add('listening'); fb.className = 'feedback-line'; fb.textContent = 'Listening... 👂'; heard.textContent = '';
       rec = listenOnce(
         alts => {
+          if (!guard.isOpen()) return;
+          rec = null; listening = false; mic.disabled = false; resumeAfterSpeech();
           mic.classList.remove('listening');
           heard.textContent = alts[0] ? 'You said: ' + alts[0] : '';
           if (speechMatch(alts, w)) {
-            fb.className = 'feedback-line good'; fb.textContent = '✅ ' + pick(['Hebat!', 'Great!', 'Perfect!', 'Wow!']);
-            correct++; addWordCorrect(catId, w.hanzi); sfx('correct'); reactGame('excited'); confetti();
-            setTimeout(() => { i++; show(); }, 1200);
+            markCorrect();
           } else {
             fb.className = 'feedback-line bad'; fb.textContent = '🔄 Try again!'; sfx('wrong'); reactGame('sad');
           }
         },
         err => {
+          if (!guard.isOpen()) return;
+          rec = null; listening = false; mic.disabled = false; resumeAfterSpeech();
           mic.classList.remove('listening');
-          if (err === 'not-allowed' || err === 'service-not-allowed') { fb.className = 'feedback-line bad'; fb.textContent = '🎙️ Please allow the microphone!'; return; }
           if ((err === 'no-speech' || err === 'aborted') && !retried) { retried = true; startListen(); return; }   // one silent retry
+          if (err === 'not-allowed' || err === 'service-not-allowed') {
+            passBtn('🎙️ Microphone blocked — tap ✅ after you say it!'); return;
+          }
           // recognizer can't hear it (offline, no language pack, weak mic) —
           // don't dead-end the child on "try again"; let them self-report.
           passBtn("🎤 couldn't hear — tap ✅ if you said it!");
@@ -644,7 +710,10 @@ function modeSpeak(catId) {
     };
     mic.onclick = startListen;
   }
-  gameCleanup = () => { try { rec && rec.abort && rec.abort(); } catch (e) {} };
+  gameCleanup = () => {
+    if (activeGuard) activeGuard.cancel();
+    abortRecognition(); resumeAfterSpeech();
+  };
   show();
 }
 
@@ -821,6 +890,7 @@ function finishPattern(p, correct, total) {
 /* ── Init ────────────────────────────────────────────────────────────── */
 function init() {
   load();
+  migrateUnlocks();
   document.addEventListener('click', e => {
     const n = e.target.closest('[data-nav]');
     if (n) { e.preventDefault(); handleNav(n.dataset.nav); }
