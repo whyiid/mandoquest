@@ -1,11 +1,11 @@
 /* MandoQuest service worker — cache-first for offline play */
-const CACHE = 'mandoquest-v24';
-// Word clips are audio/0001.mp3 .. audio/0370.mp3 (contiguous). Precache them
+const CACHE = 'mandoquest-v25';
+// Word clips are audio/0001.mp3 .. audio/0450.mp3 (contiguous). Precache them
 // ALL on install so every category has sound offline. The child plays as an
 // installed PWA with no wifi; later categories (e.g. Food) were never
 // runtime-cached, so their clips 404'd offline and fell back to silent TTS.
-// 370 clips ≈ 3.1 MB — trivial for an offline kids' app.
-const AUDIO = Array.from({ length: 370 }, (_, i) => './audio/' + String(i + 1).padStart(4, '0') + '.mp3');
+// 450 clips ≈ 3.8 MB — trivial for an offline kids' app.
+const AUDIO = Array.from({ length: 450 }, (_, i) => './audio/' + String(i + 1).padStart(4, '0') + '.mp3');
 const ASSETS = [
   './',
   './index.html',

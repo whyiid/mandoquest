@@ -47,6 +47,8 @@ const seen = new Set();
 const add = (s) => { if (s && !seen.has(s)) { seen.add(s); strings.push(s); } };
 MANDO_DATA.categories.forEach(c => c.words.forEach(w => add(w.hanzi)));
 (MANDO_DATA.sentences || []).forEach(s => add(s.tokens.join('')));
+// Pattern Drill speaks the completed sentence, so every drill needs its own clip.
+(MANDO_DATA.patterns || []).forEach(p => p.drills.forEach(d => add(d.tokens.join(''))));
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
 // synchronous sleep (no subprocess) — throttles network calls to dodge rate-limits

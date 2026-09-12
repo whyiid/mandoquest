@@ -120,7 +120,7 @@ function speechMatch(alts, w) {
 
 /* ── Persistent state ────────────────────────────────────────────────── */
 const SAVE_KEY = 'mandoquest.v1';
-const DEFAULT_STATE = { progress: {}, streak: { count: 0, last: '' }, sentence: { best: 0 }, unlockSeen: [] };
+const DEFAULT_STATE = { progress: {}, streak: { count: 0, last: '' }, sentence: { best: 0 }, patterns: {}, unlockSeen: [] };
 let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
 function load() {
   try {
@@ -158,6 +158,7 @@ function isUnlocked(i) {
 function totalStars() {
   let s = state.sentence.best || 0;
   for (const id in state.progress) { const st = state.progress[id].stars || {}; for (const k in st) s += st[k]; }
+  for (const id in (state.patterns || {})) s += state.patterns[id] || 0;
   return s;
 }
 
@@ -731,6 +732,92 @@ function showResult(stars, xp, correct, total, winText, catId) {
   if (stars >= 2) confetti();
 }
 
+/* ===========================================================================
+   MODE 6 — Pattern Drill (Pola Kalimat)
+   One sentence frame, one slot, five fillings. Sentence Builder can be beaten
+   by remembering a word order; here the frame is handed over and only the slot
+   moves, so what sticks is the frame — which then works on new words too.
+   =========================================================================== */
+// Least-practised pattern first, so every frame comes up without a menu.
+function pickPattern() {
+  const ps = MANDO_DATA.patterns, best = state.patterns || {};
+  let low = 4;
+  ps.forEach(p => { low = Math.min(low, best[p.id] || 0); });
+  return pick(ps.filter(p => (best[p.id] || 0) === low));
+}
+function patternChoices(p) {
+  if (p.choices) return p.choices.slice();
+  const seen = [];
+  p.drills.forEach(d => { const a = d.tokens[d.blank]; if (seen.indexOf(a) === -1) seen.push(a); });
+  return seen;
+}
+
+function modePattern() {
+  currentGame = { catId: null, replay: () => { showScreen('screen-game'); modePattern(); } };
+  const p = pickPattern();
+  const pool = patternChoices(p);
+  const drills = sample(p.drills, Math.min(5, p.drills.length));
+  let i = 0, correct = 0;
+
+  function show() {
+    if (i >= drills.length) { finishPattern(p, correct, drills.length); return; }
+    const d = drills[i];
+    const answer = d.tokens[d.blank];
+    const opts = shuffle([answer].concat(sample(pool.filter(c => c !== answer), Math.min(3, pool.length - 1))));
+    setDots(drills.length, i);
+    $('#game-score').textContent = correct;
+
+    const frame = d.tokens.map((t, idx) => idx === d.blank
+      ? '<span class="pat-slot" id="pat-slot">?</span>'
+      : '<span class="pat-tok">' + t + '</span>').join('');
+
+    gameRender(
+      '<div class="pat-head"><span class="pat-icon">' + p.icon + '</span>' +
+        '<div><div class="pat-title">' + p.title + '</div>' +
+        '<div class="pat-sub">' + p.en + '</div></div></div>' +
+      (p.note ? '<div class="pat-note">💡 ' + p.note + '</div>' : '') +
+      '<div class="pat-frame">' + frame + '</div>' +
+      '<div class="pat-ask"><span class="pat-emoji">' + (d.emoji || '') + '</span>' + d.en + '</div>' +
+      '<div class="options cols-2" id="pat-opts"></div>',
+      'Fill in the blank! 🧩');
+
+    const og = $('#pat-opts'); let answered = false;
+    opts.forEach(o => {
+      const c = el('div', 'opt', '<div class="opt-hz">' + o + '</div>');
+      c.onclick = () => {
+        if (answered) return; answered = true;
+        const slot = $('#pat-slot');
+        if (o === answer) {
+          c.classList.add('correct'); correct++;
+          if (slot) { slot.textContent = answer; slot.classList.add('filled'); }
+          speak(d.tokens.join(''));
+          sfx('correct'); reactGame('happy', pick(MANDO_DATA.phrases.correct));
+        } else {
+          c.classList.add('wrong'); sfx('wrong'); reactGame('sad', pick(MANDO_DATA.phrases.wrong));
+          $$('#pat-opts .opt').forEach(x => { if (x.textContent.trim() === answer) x.classList.add('correct'); });
+          if (slot) { slot.textContent = answer; slot.classList.add('filled', 'shown'); }
+          speak(d.tokens.join(''));
+        }
+        $$('#pat-opts .opt').forEach(x => { if (x !== c && !x.classList.contains('correct')) x.classList.add('dim'); });
+        // show the finished sentence so the frame is read as a whole, not as a gap
+        $('.pat-ask').innerHTML = '<span class="pat-emoji">' + (d.emoji || '') + '</span>' +
+          '<b>' + d.tokens.join('') + '</b> · ' + d.pinyin;
+        setTimeout(() => { i++; show(); }, 1900);
+      };
+      og.appendChild(c);
+    });
+  }
+  show();
+}
+
+function finishPattern(p, correct, total) {
+  const stars = computeStars(correct, total);
+  if (!state.patterns) state.patterns = {};
+  if (stars > (state.patterns[p.id] || 0)) state.patterns[p.id] = stars;
+  bumpStreak(); save();
+  showResult(stars, correct * 15, correct, total, 'Pattern: ' + p.title + ' 🧩', null);
+}
+
 /* ── Init ────────────────────────────────────────────────────────────── */
 function init() {
   load();
@@ -739,6 +826,8 @@ function init() {
     if (n) { e.preventDefault(); handleNav(n.dataset.nav); }
   });
   $('#sentence-tile').onclick = () => { showScreen('screen-game'); modeSentence(); };
+  const patTile = $('#pattern-tile');
+  if (patTile) patTile.onclick = () => { showScreen('screen-game'); modePattern(); };
 
   // music & sound toggle (does NOT affect Mandarin pronunciation)
   const soundBtn = $('#sound-toggle');

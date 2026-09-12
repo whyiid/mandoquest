@@ -720,6 +720,191 @@ const MANDO_DATA = {
     { tokens: ['八月', '是', '暑假'],             pinyin: 'bā yuè shì shǔ jià',        en: 'August is summer vacation' }
   ],
 
+  /* ─ Pattern Drill set (Pola Kalimat) ─────────────────────────────────
+     One reusable sentence frame, many fillings. Sentence Builder teaches a
+     fixed sentence — you can memorise the word order without seeing the rule.
+     A pattern keeps the frame and swaps one slot, so the frame itself becomes
+     automatic and works on words the child has never drilled.
+     `blank` is the index in `tokens` that is hidden and must be chosen.
+     `choices` is optional — without it the options are every distinct answer
+     in the pattern, which is what the vocabulary-slot patterns want. Grammar
+     patterns whose answer never varies (了, 过, 比 …) list it explicitly.     */
+  patterns: [
+    /* ── Everyday frames — the slot is vocabulary ─────────────────────── */
+    { id: 'want-go', title: '我想去 ___', en: 'I want to go to ___', icon: '🚶',
+      drills: [
+        { tokens: ['我', '想', '去', '公园'],   blank: 3, pinyin: 'wǒ xiǎng qù gōng yuán',  en: 'I want to go to the park',    emoji: '🌳' },
+        { tokens: ['我', '想', '去', '学校'],   blank: 3, pinyin: 'wǒ xiǎng qù xué xiào',   en: 'I want to go to school',      emoji: '🏫' },
+        { tokens: ['我', '想', '去', '医院'],   blank: 3, pinyin: 'wǒ xiǎng qù yī yuàn',    en: 'I want to go to the hospital', emoji: '🏥' },
+        { tokens: ['我', '想', '去', '商店'],   blank: 3, pinyin: 'wǒ xiǎng qù shāng diàn', en: 'I want to go to the store',   emoji: '🏪' },
+        { tokens: ['我', '想', '去', '厕所'],   blank: 3, pinyin: 'wǒ xiǎng qù cè suǒ',     en: 'I want to go to the toilet',  emoji: '🚽' },
+        { tokens: ['我', '想', '去', '图书馆'], blank: 3, pinyin: 'wǒ xiǎng qù tú shū guǎn', en: 'I want to go to the library', emoji: '📚' }
+      ] },
+
+    { id: 'may-i', title: '我可以 ___ 吗', en: 'May I ___?', icon: '🙏',
+      drills: [
+        { tokens: ['我', '可以', '喝水', '吗'],   blank: 2, pinyin: 'wǒ kě yǐ hē shuǐ ma',     en: 'May I drink water?',   emoji: '💧' },
+        { tokens: ['我', '可以', '看电视', '吗'], blank: 2, pinyin: 'wǒ kě yǐ kàn diàn shì ma', en: 'May I watch TV?',      emoji: '📺' },
+        { tokens: ['我', '可以', '吃饭', '吗'],   blank: 2, pinyin: 'wǒ kě yǐ chī fàn ma',     en: 'May I eat?',           emoji: '🍚' },
+        { tokens: ['我', '可以', '睡觉', '吗'],   blank: 2, pinyin: 'wǒ kě yǐ shuì jiào ma',   en: 'May I sleep?',         emoji: '😴' },
+        { tokens: ['我', '可以', '画画', '吗'],   blank: 2, pinyin: 'wǒ kě yǐ huà huà ma',     en: 'May I draw?',          emoji: '🎨' }
+      ] },
+
+    { id: 'this-is-whose', title: '这是 ___ 的', en: "This is ___'s", icon: '👉',
+      drills: [
+        { tokens: ['这', '是', '我', '的'],   blank: 2, pinyin: 'zhè shì wǒ de',     en: 'This is mine',              emoji: '🙋' },
+        { tokens: ['这', '是', '你', '的'],   blank: 2, pinyin: 'zhè shì nǐ de',     en: 'This is yours',             emoji: '👉' },
+        { tokens: ['这', '是', '妈妈', '的'], blank: 2, pinyin: 'zhè shì mā ma de',   en: "This is Mom's",             emoji: '👩' },
+        { tokens: ['这', '是', '老师', '的'], blank: 2, pinyin: 'zhè shì lǎo shī de', en: "This is the teacher's",     emoji: '👩‍🏫' },
+        { tokens: ['这', '是', '弟弟', '的'], blank: 2, pinyin: 'zhè shì dì di de',   en: "This is little brother's",  emoji: '👦' }
+      ] },
+
+    { id: 'i-like', title: '我喜欢 ___', en: 'I like ___', icon: '❤️',
+      drills: [
+        { tokens: ['我', '喜欢', '游泳'], blank: 2, pinyin: 'wǒ xǐ huan yóu yǒng', en: 'I like swimming', emoji: '🏊' },
+        { tokens: ['我', '喜欢', '画画'], blank: 2, pinyin: 'wǒ xǐ huan huà huà',  en: 'I like drawing',  emoji: '🎨' },
+        { tokens: ['我', '喜欢', '唱歌'], blank: 2, pinyin: 'wǒ xǐ huan chàng gē', en: 'I like singing',  emoji: '🎤' },
+        { tokens: ['我', '喜欢', '足球'], blank: 2, pinyin: 'wǒ xǐ huan zú qiú',   en: 'I like soccer',   emoji: '⚽' },
+        { tokens: ['我', '喜欢', '苹果'], blank: 2, pinyin: 'wǒ xǐ huan píng guǒ', en: 'I like apples',   emoji: '🍎' },
+        { tokens: ['我', '喜欢', '熊猫'], blank: 2, pinyin: 'wǒ xǐ huan xióng māo', en: 'I like pandas',  emoji: '🐼' }
+      ] },
+
+    { id: 'i-can', title: '我会 ___', en: 'I know how to ___', icon: '💪',
+      drills: [
+        { tokens: ['我', '会', '游泳'],   blank: 2, pinyin: 'wǒ huì yóu yǒng',    en: 'I know how to swim',         emoji: '🏊' },
+        { tokens: ['我', '会', '骑车'],   blank: 2, pinyin: 'wǒ huì qí chē',      en: 'I know how to ride a bike',  emoji: '🚴' },
+        { tokens: ['我', '会', '唱歌'],   blank: 2, pinyin: 'wǒ huì chàng gē',    en: 'I know how to sing',         emoji: '🎤' },
+        { tokens: ['我', '会', '跳舞'],   blank: 2, pinyin: 'wǒ huì tiào wǔ',     en: 'I know how to dance',        emoji: '💃' },
+        { tokens: ['我', '会', '弹钢琴'], blank: 2, pinyin: 'wǒ huì tán gāng qín', en: 'I know how to play piano',  emoji: '🎹' }
+      ] },
+
+    { id: 'i-am-at', title: '我在 ___', en: 'I am at ___', icon: '📍',
+      drills: [
+        { tokens: ['我', '在', '家'],   blank: 2, pinyin: 'wǒ zài jiā',       en: 'I am at home',        emoji: '🏠' },
+        { tokens: ['我', '在', '学校'], blank: 2, pinyin: 'wǒ zài xué xiào',  en: 'I am at school',      emoji: '🏫' },
+        { tokens: ['我', '在', '公园'], blank: 2, pinyin: 'wǒ zài gōng yuán', en: 'I am at the park',    emoji: '🌳' },
+        { tokens: ['我', '在', '房间'], blank: 2, pinyin: 'wǒ zài fáng jiān', en: 'I am in my room',     emoji: '🚪' },
+        { tokens: ['我', '在', '厨房'], blank: 2, pinyin: 'wǒ zài chú fáng',  en: 'I am in the kitchen', emoji: '🍳' }
+      ] },
+
+    { id: 'i-have', title: '我有 ___', en: 'I have ___', icon: '🎒',
+      drills: [
+        { tokens: ['我', '有', '书包'], blank: 2, pinyin: 'wǒ yǒu shū bāo',  en: 'I have a schoolbag', emoji: '🎒' },
+        { tokens: ['我', '有', '玩具'], blank: 2, pinyin: 'wǒ yǒu wán jù',   en: 'I have a toy',       emoji: '🧸' },
+        { tokens: ['我', '有', '朋友'], blank: 2, pinyin: 'wǒ yǒu péng you', en: 'I have friends',     emoji: '👫' },
+        { tokens: ['我', '有', '铅笔'], blank: 2, pinyin: 'wǒ yǒu qiān bǐ',  en: 'I have a pencil',    emoji: '✏️' },
+        { tokens: ['我', '有', '手机'], blank: 2, pinyin: 'wǒ yǒu shǒu jī',  en: 'I have a phone',     emoji: '📱' }
+      ] },
+
+    { id: 'i-feel', title: '我很 ___', en: 'I am very ___', icon: '😊',
+      drills: [
+        { tokens: ['我', '很', '开心'], blank: 2, pinyin: 'wǒ hěn kāi xīn', en: 'I am very happy',  emoji: '😄' },
+        { tokens: ['我', '很', '累'],   blank: 2, pinyin: 'wǒ hěn lèi',     en: 'I am very tired',  emoji: '😪' },
+        { tokens: ['我', '很', '饿'],   blank: 2, pinyin: 'wǒ hěn è',       en: 'I am very hungry', emoji: '🤤' },
+        { tokens: ['我', '很', '渴'],   blank: 2, pinyin: 'wǒ hěn kě',      en: 'I am very thirsty', emoji: '🥤' },
+        { tokens: ['我', '很', '难过'], blank: 2, pinyin: 'wǒ hěn nán guò', en: 'I am very sad',    emoji: '😢' }
+      ] },
+
+    { id: 'mom-is-doing', title: '妈妈在 ___', en: 'Mom is ___ing', icon: '👩',
+      drills: [
+        { tokens: ['妈妈', '在', '做饭'],   blank: 2, pinyin: 'mā ma zài zuò fàn',     en: 'Mom is cooking',       emoji: '👩‍🍳' },
+        { tokens: ['妈妈', '在', '看电视'], blank: 2, pinyin: 'mā ma zài kàn diàn shì', en: 'Mom is watching TV',  emoji: '📺' },
+        { tokens: ['妈妈', '在', '炒菜'],   blank: 2, pinyin: 'mā ma zài chǎo cài',     en: 'Mom is stir-frying',   emoji: '🥘' },
+        { tokens: ['妈妈', '在', '睡觉'],   blank: 2, pinyin: 'mā ma zài shuì jiào',    en: 'Mom is sleeping',      emoji: '😴' },
+        { tokens: ['妈妈', '在', '唱歌'],   blank: 2, pinyin: 'mā ma zài chàng gē',     en: 'Mom is singing',       emoji: '🎤' }
+      ] },
+
+    { id: 'where-is-my', title: '我的 ___ 在哪里', en: 'Where is my ___?', icon: '🔍',
+      drills: [
+        { tokens: ['我', '的', '书包', '在', '哪里'], blank: 2, pinyin: 'wǒ de shū bāo zài nǎ lǐ',  en: 'Where is my schoolbag?', emoji: '🎒' },
+        { tokens: ['我', '的', '铅笔', '在', '哪里'], blank: 2, pinyin: 'wǒ de qiān bǐ zài nǎ lǐ',  en: 'Where is my pencil?',    emoji: '✏️' },
+        { tokens: ['我', '的', '鞋子', '在', '哪里'], blank: 2, pinyin: 'wǒ de xié zi zài nǎ lǐ',   en: 'Where are my shoes?',    emoji: '👟' },
+        { tokens: ['我', '的', '手机', '在', '哪里'], blank: 2, pinyin: 'wǒ de shǒu jī zài nǎ lǐ',  en: 'Where is my phone?',     emoji: '📱' },
+        { tokens: ['我', '的', '玩具', '在', '哪里'], blank: 2, pinyin: 'wǒ de wán jù zài nǎ lǐ',   en: 'Where is my toy?',       emoji: '🧸' }
+      ] },
+
+    /* ── Grammar frames — the slot is the rule ────────────────────────── */
+    { id: 'measure-words', title: '数字 + ___ + 东西', en: 'Counting words (量词)', icon: '🔢',
+      note: 'Chinese needs a counting word between the number and the thing',
+      drills: [
+        { tokens: ['三', '只', '猫'],   blank: 1, pinyin: 'sān zhī māo',      en: 'three cats',        emoji: '🐱' },
+        { tokens: ['一', '只', '狗'],   blank: 1, pinyin: 'yī zhī gǒu',       en: 'one dog',           emoji: '🐶' },
+        { tokens: ['两', '本', '书'],   blank: 1, pinyin: 'liǎng běn shū',    en: 'two books',         emoji: '📖' },
+        { tokens: ['一', '杯', '水'],   blank: 1, pinyin: 'yī bēi shuǐ',      en: 'a glass of water',  emoji: '💧' },
+        { tokens: ['五', '个', '苹果'], blank: 1, pinyin: 'wǔ gè píng guǒ',   en: 'five apples',       emoji: '🍎' },
+        { tokens: ['三', '个', '朋友'], blank: 1, pinyin: 'sān gè péng you',  en: 'three friends',     emoji: '👫' }
+      ] },
+
+    { id: 'bu-vs-mei', title: '不 还是 没', en: '不 or 没 — two ways to say "not"', icon: '🚫',
+      note: '不 = do not / am not (now, always) · 没 = did not / have not (past)',
+      drills: [
+        { tokens: ['我', '不', '喜欢'],       blank: 1, pinyin: 'wǒ bù xǐ huan',        en: "I don't like it",           emoji: '👎' },
+        { tokens: ['我', '不', '累'],         blank: 1, pinyin: 'wǒ bú lèi',            en: "I'm not tired",             emoji: '😌' },
+        { tokens: ['他', '不', '会', '游泳'], blank: 1, pinyin: 'tā bú huì yóu yǒng',   en: "He can't swim",             emoji: '🏊' },
+        { tokens: ['我', '没', '去'],         blank: 1, pinyin: 'wǒ méi qù',            en: "I didn't go",               emoji: '🚶' },
+        { tokens: ['我', '没', '吃饭'],       blank: 1, pinyin: 'wǒ méi chī fàn',       en: "I haven't eaten",           emoji: '🍚' },
+        { tokens: ['我', '没', '带', '书包'], blank: 1, pinyin: 'wǒ méi dài shū bāo',   en: "I didn't bring my schoolbag", emoji: '🎒' }
+      ] },
+
+    { id: 'le-done', title: '___ 了', en: '了 — it already happened', icon: '✅',
+      note: 'Put 了 at the end to say the thing is done',
+      choices: ['了', '吗', '呢', '过'],
+      drills: [
+        { tokens: ['我', '吃饭', '了'],   blank: 2, pinyin: 'wǒ chī fàn le',      en: 'I have eaten',        emoji: '🍚' },
+        { tokens: ['我', '起床', '了'],   blank: 2, pinyin: 'wǒ qǐ chuáng le',    en: 'I got up',            emoji: '🌅' },
+        { tokens: ['他', '回家', '了'],   blank: 2, pinyin: 'tā huí jiā le',      en: 'He went home',        emoji: '🏠' },
+        { tokens: ['我', '刷牙', '了'],   blank: 2, pinyin: 'wǒ shuā yá le',      en: 'I brushed my teeth',  emoji: '🪥' },
+        { tokens: ['太阳', '出来', '了'], blank: 2, pinyin: 'tài yáng chū lái le', en: 'The sun came out',   emoji: '☀️' }
+      ] },
+
+    { id: 'guo-ever', title: '___ 过 ___', en: '过 — I have done it before', icon: '🕰️',
+      note: '过 after the verb means you have tried it at some time',
+      choices: ['过', '了', '吗', '在'],
+      drills: [
+        { tokens: ['我', '吃', '过', '面包'], blank: 2, pinyin: 'wǒ chī guo miàn bāo', en: 'I have eaten bread before',      emoji: '🍞' },
+        { tokens: ['我', '去', '过', '医院'], blank: 2, pinyin: 'wǒ qù guo yī yuàn',   en: 'I have been to the hospital',     emoji: '🏥' },
+        { tokens: ['我', '坐', '过', '飞机'], blank: 2, pinyin: 'wǒ zuò guo fēi jī',   en: 'I have been on a plane before',   emoji: '✈️' },
+        { tokens: ['我', '玩', '过', '游戏'], blank: 2, pinyin: 'wǒ wán guo yóu xì',   en: 'I have played that game before',  emoji: '🎮' }
+      ] },
+
+    { id: 'zai-doing', title: '___ 在 ___ 呢', en: '在 … 呢 — doing it right now', icon: '⏳',
+      note: '在 before the verb means it is happening this moment',
+      choices: ['在', '了', '过', '不'],
+      drills: [
+        { tokens: ['我', '在', '吃饭', '呢'],   blank: 1, pinyin: 'wǒ zài chī fàn ne',     en: 'I am eating right now',   emoji: '🍚' },
+        { tokens: ['他', '在', '睡觉', '呢'],   blank: 1, pinyin: 'tā zài shuì jiào ne',   en: 'He is sleeping right now', emoji: '😴' },
+        { tokens: ['妈妈', '在', '做饭', '呢'], blank: 1, pinyin: 'mā ma zài zuò fàn ne',  en: 'Mom is cooking right now', emoji: '👩‍🍳' }
+      ] },
+
+    { id: 'bi-compare', title: 'A ___ B + 形容词', en: '比 — comparing two things', icon: '📏',
+      note: 'A 比 B 高 = A is taller than B',
+      choices: ['比', '和', '是', '很'],
+      drills: [
+        { tokens: ['我', '比', '你', '高'],       blank: 1, pinyin: 'wǒ bǐ nǐ gāo',           en: 'I am taller than you',            emoji: '📏' },
+        { tokens: ['哥哥', '比', '我', '大'],     blank: 1, pinyin: 'gē ge bǐ wǒ dà',         en: 'Big brother is older than me',    emoji: '👦' },
+        { tokens: ['猫', '比', '狗', '小'],       blank: 1, pinyin: 'māo bǐ gǒu xiǎo',        en: 'Cats are smaller than dogs',      emoji: '🐱' },
+        { tokens: ['今天', '比', '昨天', '热'],   blank: 1, pinyin: 'jīn tiān bǐ zuó tiān rè', en: 'Today is hotter than yesterday', emoji: '🔥' }
+      ] },
+
+    { id: 'connectors', title: '连接词', en: 'Joining two ideas', icon: '🔗',
+      note: '所以 = so · 但是 = but · 然后 = then · 还有 = and also',
+      drills: [
+        { tokens: ['下雨', '了', '所以', '我', '在家'], blank: 2, pinyin: 'xià yǔ le suǒ yǐ wǒ zài jiā', en: "It's raining, SO I'm at home",      emoji: '🌧️' },
+        { tokens: ['我', '很累', '但是', '很开心'],     blank: 2, pinyin: 'wǒ hěn lèi dàn shì hěn kāi xīn', en: "I'm tired, BUT I'm happy",      emoji: '😄' },
+        { tokens: ['我', '刷牙', '然后', '睡觉'],       blank: 2, pinyin: 'wǒ shuā yá rán hòu shuì jiào',  en: 'I brush my teeth, THEN sleep',   emoji: '🪥' },
+        { tokens: ['我', '喜欢猫', '还有', '狗'],       blank: 2, pinyin: 'wǒ xǐ huan māo hái yǒu gǒu',    en: 'I like cats, AND ALSO dogs',     emoji: '🐱' }
+      ] },
+
+    { id: 'ma-vs-ne', title: '吗 还是 呢', en: '吗 or 呢 — asking questions', icon: '❓',
+      note: '吗 turns a sentence into a yes/no question · 呢 bounces it back: "and you?"',
+      drills: [
+        { tokens: ['你', '好', '吗'],         blank: 2, pinyin: 'nǐ hǎo ma',           en: 'How are you?',        emoji: '🙋' },
+        { tokens: ['你', '饿', '吗'],         blank: 2, pinyin: 'nǐ è ma',             en: 'Are you hungry?',     emoji: '🤤' },
+        { tokens: ['这', '是', '你的', '吗'], blank: 3, pinyin: 'zhè shì nǐ de ma',    en: 'Is this yours?',      emoji: '👉' },
+        { tokens: ['我', '很好', '你', '呢'], blank: 3, pinyin: 'wǒ hěn hǎo nǐ ne',    en: "I'm fine, and you?",  emoji: '😊' }
+      ] }
+  ],
+
   /* ─ Dragon mascot phrases (English, kid-friendly) ────────────────────── */
   phrases: {
     correct: ['Awesome! 🎉', 'You got it! ⭐', 'Super!', 'Great job! 🐉', 'Perfect! 💯', 'Wow!'],
