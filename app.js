@@ -135,22 +135,26 @@ function addWordCorrect(id, hanzi) { ensureCat(id); state.progress[id].words[han
 function addXp(id, n) { ensureCat(id); state.progress[id].xp += n; }
 function setBest(id, mode, stars) { ensureCat(id); if (stars > (state.progress[id].stars[mode] || 0)) state.progress[id].stars[mode] = stars; }
 function getBest(id, mode) { return (state.progress[id] && state.progress[id].stars[mode]) || 0; }
+// Mastery is skill, not repetition: best stars earned across the 4 modes.
+// It used to also take a word-exposure score (each word answered right 3x) and
+// return whichever was higher. That score counts how OFTEN a word was answered
+// right, never how often it was answered wrong, so replaying a topic at 40%
+// accuracy still crept to 100% and unlocked the next one. Stars carry accuracy,
+// so they are the only gate now.
 function categoryMastery(id) {
-  const cat = MANDO_DATA.getCategory(id), p = state.progress[id];
+  const p = state.progress[id];
   if (!p) return 0;
-  // word-based: needs each word answered right 3x — but rounds only sample 6
-  // words, so big categories plateau below 80% even at max stars.
-  let sum = 0;
-  cat.words.forEach(w => { sum += Math.min(p.words[w.hanzi] || 0, 3); });
-  const wordPct = sum / (cat.words.length * 3) * 100;
-  // star-based: 3 stars in all 4 modes = topic beaten = 100%. Take whichever
-  // is higher so completing every mode always unlocks the next topic.
   let stars = 0;
   MODES.forEach(mo => { stars += p.stars[mo.key] || 0; });
-  const starPct = stars / (MODES.length * 3) * 100;
-  return Math.round(Math.max(wordPct, starPct));
+  return Math.round(stars / (MODES.length * 3) * 100);
 }
-function isUnlocked(i) { return i === 0 || categoryMastery(MANDO_DATA.categories[i - 1].id) >= 80; }
+// A topic already opened stays open — tightening the gate must not take away
+// what Matthew reached under the old rules. New topics must earn it.
+function isUnlocked(i) {
+  if (i === 0) return true;
+  if (state.unlockSeen.indexOf(MANDO_DATA.categories[i].id) !== -1) return true;
+  return categoryMastery(MANDO_DATA.categories[i - 1].id) >= 80;
+}
 function totalStars() {
   let s = state.sentence.best || 0;
   for (const id in state.progress) { const st = state.progress[id].stars || {}; for (const k in st) s += st[k]; }
@@ -446,7 +450,10 @@ function modeMatch(catId) {
       matched++; addWordCorrect(catId, item.dataset.hz); speak(item.dataset.hz);
       sfx('correct'); reactGame('happy', pick(MANDO_DATA.phrases.correct)); setDots(n, matched);
       $('#game-score').textContent = matched;
-      if (matched === n) setTimeout(() => finishRound({ catId, mode: 'match', correct: n, total: n + wrong }), 900);
+      // The round only ends when everything is matched, so `correct` was always
+      // n — a perfect score no matter how many wrong drops it took. Charge the
+      // misses against the score instead.
+      if (matched === n) setTimeout(() => finishRound({ catId, mode: 'match', correct: Math.max(0, n - wrong), total: n }), 900);
     } else {
       wrong++;
       if (item.animate) item.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-7px)' }, { transform: 'translateX(7px)' }, { transform: 'translateX(0)' }], { duration: 300 });
@@ -505,6 +512,7 @@ function modeListen(catId) {
 function modeHunt(catId) {
   currentGame = { catId, replay: () => { showScreen('screen-game'); modeHunt(catId); } };
   const cat = MANDO_DATA.getCategory(catId);
+  let misses = 0;
   const cells = sample(cat.words, Math.min(tierN(catId, 9, 12, 16), cat.words.length));
   let score = 0, target = null, running = true;
   const DUR = 45000;
@@ -532,6 +540,7 @@ function modeHunt(catId) {
       c.classList.add('correct'); setTimeout(() => c.classList.remove('correct'), 300);
       sfx('correct'); reactGame('happy', pick(MANDO_DATA.phrases.correct)); nextTarget();
     } else {
+      misses++;
       c.classList.add('wrong'); setTimeout(() => c.classList.remove('wrong'), 300);
       sfx('wrong'); reactGame('sad', pick(MANDO_DATA.phrases.wrong));
     }
@@ -545,9 +554,13 @@ function modeHunt(catId) {
   }, 100);
   gameCleanup = () => { clearInterval(iv); running = false; };
 
+  // Speed alone used to be enough: wrong taps were never counted, so tapping
+  // every cell until something stuck scored 3 stars. Needs speed AND accuracy.
   function end() {
-    const stars = score >= 10 ? 3 : score >= 6 ? 2 : 1;
-    finishRound({ catId, mode: 'hunt', correct: score, total: Math.max(score, 10), stars, xp: score * 10, winText: 'You found ' + score + ' words! ⚡' });
+    const taps = score + misses;
+    const acc = taps > 0 ? score / taps : 0;
+    const stars = (score >= 10 && acc >= 0.8) ? 3 : (score >= 6 && acc >= 0.65) ? 2 : (score >= 3 && acc >= 0.5) ? 1 : 0;
+    finishRound({ catId, mode: 'hunt', correct: score, total: Math.max(taps, 10), stars, xp: score * 10, winText: 'You found ' + score + ' words! ⚡' });
   }
   nextTarget();
 }
@@ -691,10 +704,12 @@ function finishSentence(correct, total) {
 }
 
 /* ── round finish + results ──────────────────────────────────────────── */
+// 0 stars = round not passed. Without a zero there is no failing grade, so any
+// amount of sloppy play still counted toward unlocking the next topic.
 function computeStars(correct, total) {
-  if (total <= 0) return 1;
+  if (total <= 0) return 0;
   const a = correct / total;
-  return a >= 0.9 ? 3 : a >= 0.6 ? 2 : 1;
+  return a >= 0.9 ? 3 : a >= 0.7 ? 2 : a >= 0.5 ? 1 : 0;
 }
 function finishRound(o) {
   const stars = (o.stars != null) ? o.stars : computeStars(o.correct, o.total);
@@ -708,7 +723,7 @@ function showResult(stars, xp, correct, total, winText, catId) {
   sfx('win');
   const d = mountDragon($('#result-dragon')); setMood(d, stars >= 2 ? 'excited' : 'happy', false);
   ['s1', 's2', 's3'].forEach((c, idx) => $('.big-star.' + c).classList.toggle('on', idx < stars));
-  $('#result-title').textContent = stars >= 3 ? 'Perfect! 🌟' : stars === 2 ? 'Well done! 🎉' : 'Good try! 💪';
+  $('#result-title').textContent = stars >= 3 ? 'Perfect! 🌟' : stars === 2 ? 'Well done! 🎉' : stars === 1 ? 'Good try! 💪' : 'Try again! 🔄';
   $('#result-xp').textContent = '+' + xp + ' XP  ·  ' + correct + '/' + total + ' correct';
   $('#result-msg').textContent = winText || pick(MANDO_DATA.phrases.win);
   $('#btn-again').onclick = () => currentGame.replay();
