@@ -7,6 +7,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const {
+  createTapCooldown,
   createSingleUseGuard,
   matchesSpeech,
   normalizeHanzi,
@@ -73,6 +74,13 @@ test('normalizes tone-marked pinyin consistently', () => {
   assert.equal(normalizePinyin('Nǐ HǎO'), 'nihao');
 });
 
+test('treats v as phone-friendly ü but does not accept plain u', () => {
+  assert.equal(normalizePinyin('lǜ sè'), 'lvse');
+  assert.equal(normalizePinyin('lv se'), 'lvse');
+  assert.notEqual(normalizePinyin('lu se'), normalizePinyin('lǜ sè'));
+  assert.equal(normalizePinyin('nǚ hái'), normalizePinyin('nv hai'));
+});
+
 test('single-use guard permits only one completion', () => {
   const guard = createSingleUseGuard();
   let completions = 0;
@@ -98,4 +106,17 @@ test('single-use guard can close without an action callback', () => {
 
   assert.equal(guard.run(), true);
   assert.equal(guard.isOpen(), false);
+});
+
+test('tap cooldown blocks a second tap even after the question rerenders', () => {
+  let now = 1000;
+  const cooldown = createTapCooldown(450, () => now);
+  let advances = 0;
+
+  assert.equal(cooldown.run(() => { advances++; }), true);
+  now = 1200;
+  assert.equal(cooldown.run(() => { advances++; }), false);
+  now = 1450;
+  assert.equal(cooldown.run(() => { advances++; }), true);
+  assert.equal(advances, 2);
 });

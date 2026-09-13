@@ -170,6 +170,7 @@ img { -webkit-user-drag: none; }
   color: #fff; border-radius: var(--r-lg); padding: 18px 20px; box-shadow: var(--shadow);
   transition: transform .1s;
 }
+.tile[hidden] { display: none !important; }
 .tile:active { transform: scale(.98); }
 .tile .t-emoji { font-size: 40px; }
 .tile .t-name { font-weight: 900; font-size: 20px; }
@@ -228,6 +229,8 @@ img { -webkit-user-drag: none; }
 .st-fill { height: 100%; border-radius: 999px; }
 .st-num { font-weight: 800; font-size: 12.5px; color: var(--ink-soft); width: 42px; text-align: right; }
 @media (max-width: 520px) { .st-tn { width: 96px; } }
+.st-build { text-align: center; font-weight: 800; font-size: 12px; color: var(--ink-soft);
+  margin-top: 18px; opacity: .7; }
 
 /* ─ Write It! (recall) ─────────────────────────────────────────────────── */
 .rc-emoji { font-size: 74px; line-height: 1; }

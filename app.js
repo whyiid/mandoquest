@@ -1,8 +1,9 @@
 /* ===========================================================================
    MandoQuest — app.js
-   Core engine + 6 game modes. Vanilla JS, no dependencies.
+   Core engine + 9 learning activities. Vanilla JS, no dependencies.
    Sections:  Utils · TTS/Speech · State · Gamification · Router ·
-              Home · Category · Modes (Match/Listen/Hunt/Speak/Sentence/Pattern) ·
+              Home · Category · Modes (Match/Listen/Hunt/Speak/Recall/Sentence/
+              Pattern/Tones/Sentence Listening) ·
               Results · Init
    =========================================================================== */
 'use strict';
@@ -109,8 +110,14 @@ function listenOnce(onResult, onError) {
 }
 const speechMatch = window.MandoSpeech.matchesSpeech;
 const createSpeechGuard = window.MandoSpeech.createSingleUseGuard;
+const createTapCooldown = window.MandoSpeech.createTapCooldown;
+const updateSrsEntry = window.MandoLearning.updateSrsEntry;
+const weakSrsEntries = window.MandoLearning.weakSrsEntries;
 
 /* ── Persistent state ────────────────────────────────────────────────── */
+// Bumped with the service-worker CACHE version. Shown on the Progress screen so
+// "am I actually on the new build?" can be answered by looking, not by asking.
+const APP_BUILD = 'v30';
 const SAVE_KEY = 'mandoquest.v1';
 const DEFAULT_STATE = { progress: {}, streak: { count: 0, last: '' }, sentence: { best: 0 }, patterns: {}, unlockSeen: [], gateV2: false, quest: null, srs: {}, tones: { best: 0 }, hear: { best: 0 } };
 let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -141,10 +148,8 @@ function recordWord(catId, hanzi, ok) {
   // '_galaxy' / '_srs' are virtual decks — don't create progress rows for them
   if (ok && catId && catId.charAt(0) !== '_') addWordCorrect(catId, hanzi);
   if (!state.srs) state.srs = {};
-  const e = state.srs[hanzi] || { n: 0, due: todayStr(), miss: 0 };
-  if (ok) { e.n = Math.min(e.n + 1, SRS_STEPS.length); e.due = addDays(todayStr(), SRS_STEPS[e.n - 1]); }
-  else { e.n = 0; e.miss = (e.miss || 0) + 1; e.due = addDays(todayStr(), 1); }
-  state.srs[hanzi] = e;
+  const today = todayStr();
+  state.srs[hanzi] = updateSrsEntry(state.srs[hanzi], ok, today, SRS_STEPS, addDays);
 }
 // Words he has met before, from open topics, whose rest day has arrived.
 function dueWords() {
@@ -661,6 +666,7 @@ function modeSpeak(catId) {
   const cat = MANDO_DATA.getCategory(catId);
   const qs = sample(cat.words, Math.min(6, cat.words.length));
   let i = 0, correct = 0, rec = null, activeGuard = null;
+  const skipCooldown = createTapCooldown(450);
 
   const pauseForSpeech = () => {
     const audio = window.MandoSFX;
@@ -717,10 +723,11 @@ function modeSpeak(catId) {
       setTimeout(() => { i++; show(); }, 1200);
     });
 
-    skip.onclick = () => guard.run(() => {
+    skip.onclick = () => skipCooldown.run(() => guard.run(() => {
       disableTurn(); abortRecognition(); resumeAfterSpeech();
+      recordWord(catId, w.hanzi, false);
       i++; show();
-    });
+    }));
 
     // Self-report pass: child taps ✅ to confirm they said it. Used when speech
     // recognition can't work — no API support, OR offline: Web Speech streams
@@ -792,7 +799,7 @@ function modeSentence() {
 
   function show() {
     if (i >= qs.length) { finishSentence(firstTry, qs.length); return; }
-    const s = qs[i]; let tried = false;
+    const s = qs[i]; let tried = false, answered = false;
     setDots(qs.length, i);
     gameRender(
       '<div class="prompt-card" style="padding:16px"><div class="prompt-en">' + s.en + '</div>' +
@@ -822,9 +829,11 @@ function modeSentence() {
     });
 
     $('#sent-check').onclick = () => {
+      if (answered) return;
       if (placed.length === 0) { toast('Tap the words to build! 👆'); return; }
       const ok = placed.map(p => p.tk).join('') === s.tokens.join('');
       if (ok) {
+        answered = true;
         if (!tried) firstTry++;
         $$('#sent-build .word-card').forEach(x => x.style.background = 'var(--good-soft)');
         speak(s.tokens.join('')); sfx('correct'); reactGame('happy', pick(MANDO_DATA.phrases.correct));
@@ -1357,11 +1366,8 @@ function renderStats() {
   const due = dueWords().length;
   const solid = Object.keys(srs).filter(h => (srs[h].n || 0) >= 4).length;
 
-  // the actually useful bit: what he keeps getting wrong
-  const weak = Object.keys(srs)
-    .map(h => ({ hanzi: h, miss: srs[h].miss || 0, n: srs[h].n || 0 }))
-    .filter(x => x.miss > 0)
-    .sort((a, b) => b.miss - a.miss || a.n - b.n)
+  // Current weak words only; a later correct answer removes stale old misses.
+  const weak = weakSrsEntries(srs)
     .slice(0, 10)
     .map(x => {
       const w = MANDO_DATA.allWords.find(v => v.hanzi === x.hanzi);
@@ -1381,7 +1387,7 @@ function renderStats() {
       card(due, 'due to review 🧠') +
     '</div>' +
 
-    '<h3 class="st-h">Words he keeps missing</h3>' +
+    '<h3 class="st-h">Words needing practice</h3>' +
     (weak.length
       ? '<div class="st-weak">' + weak.map(x =>
           '<div class="st-word"><span class="st-emoji">' + (x.emoji || '📝') + '</span>' +
@@ -1390,6 +1396,8 @@ function renderStats() {
           '<span class="spacer"></span><span class="st-miss">' + x.miss + '×</span></div>').join('') +
         '</div>'
       : '<div class="st-empty">Nothing missed yet — either he is flying, or he has not played enough for this to mean anything.</div>') +
+
+    '<div class="st-build">MandoQuest ' + APP_BUILD + '</div>' +
 
     '<h3 class="st-h">Every topic</h3>' +
     '<div class="st-topics">' + cats.map((c, i) => {

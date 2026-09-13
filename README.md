@@ -27,14 +27,14 @@ For testing on the same computer, `localhost` is treated as secure by Chrome:
 
 ```bash
 cd MandoQuest
-python3 -m http.server 8000
+python3 tools/devserver.py 8000
 ```
 
 Then open `http://localhost:8000` on that computer. For Android installation, deploy the same folder to HTTPS first.
 
 ---
 
-## 🎮 The 6 games
+## 🎮 The 9 learning activities
 
 | Game | What Matthew does |
 |------|-------------------|
@@ -42,8 +42,11 @@ Then open `http://localhost:8000` on that computer. For Android installation, de
 | 👂 **Listen & Choose** | The dragon says a word — tap the character he said. |
 | ⚡ **Hanzi Hunt** | Race the clock: hear a word, tap the right character fast! |
 | 🎤 **Speak!** | Say the word out loud — the dragon listens and checks it. |
+| ✍️ **Write It!** | Recall a word and type its pinyin without answer choices. |
 | 🧩 **Sentence Builder** | Tap the word-cards in order to build a sentence (e.g. 我 + 叫 + Matthew). |
 | 🗣️ **Pattern Drill** | Pick the missing word to practise reusable sentence frames. |
+| 🎵 **Tone Trainer** | Hear a syllable and identify its tone or a tonal minimal pair. |
+| 👂 **Listen & Understand** | Hear a complete sentence and choose its meaning. |
 
 **30 topics:** 327 words, 68 sentence-builder prompts, and 18 reusable patterns with 88 drills, curated for beginner Mandarin.
 
@@ -65,7 +68,7 @@ To reset all progress: in the browser, clear site data, or run `localStorage.cle
 - **Audio = bundled clear-voice pack.** Every word and sentence ships as a pre-recorded clip in `audio/` (a native **Mainland Mandarin / 普通话** voice, matching the simplified characters used in the app and Matthew's HSK direction). The app plays the clip; if a clip is ever missing or blocked, it automatically **falls back to the browser's built-in voice** (Web Speech API), so audio never fully breaks. After the first time a clip plays, it's cached for offline use.
 - **Music & sound effects.** Gentle background music and reward/tap sounds are **synthesised live** in the browser (Web Audio API — no audio files, fully offline). Tap the **🔊 / 🔇** button (top-right) to turn them on or off; the choice is remembered. This toggle never silences the word **pronunciation** — that always plays.
 - **Speaking game** (🎤) needs **microphone permission** and an **internet connection** (the browser's speech recognition runs online). All other games work fully offline.
-- Best supported on **Chrome / Edge**. Safari has limited speech-recognition support — the other 5 games still work.
+- Best supported on **Chrome / Edge**. Safari has limited speech-recognition support — the other activities still work.
 
 ### ➕ Adding new words — or a whole new topic (level)
 All the learning content lives in **one file: `data.js`**. You don't need to touch any other code.
@@ -117,7 +120,8 @@ MandoQuest/
 ├── style.css          kid-first visual design
 ├── data.js            all words, sentences & phrases
 ├── speech.js          tested speech matching + turn guard
-├── app.js             game engine + 6 game modes
+├── learning.js        tested spaced-repetition + progress helpers
+├── app.js             game engine + 9 learning activities
 ├── manifest.json      makes it installable as an app
 ├── sw.js              offline cache (service worker)
 ├── icons/icon.svg     the dragon app icon

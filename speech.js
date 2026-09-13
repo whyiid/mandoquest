@@ -20,10 +20,28 @@
 
   function normalizePinyin(value) {
     return String(value || '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase()
+      .normalize('NFD')
+      // Android/desktop pinyin keyboards conventionally use "v" for ü. Keep
+      // it distinct from plain "u", otherwise lǜ incorrectly accepts "lu".
+      .replace(/u\u0308/g, 'v')
+      .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z]/g, '');
+  }
+
+  function createTapCooldown(duration, clock) {
+    const wait = Math.max(0, Number(duration) || 0);
+    const now = typeof clock === 'function' ? clock : Date.now;
+    let lockedUntil = -Infinity;
+    return {
+      run(action) {
+        const time = now();
+        if (time < lockedUntil) return false;
+        lockedUntil = time + wait;
+        if (typeof action === 'function') action();
+        return true;
+      }
+    };
   }
 
   // SpeechRecognition returns text, not a pronunciation score. Accept only an
@@ -59,5 +77,5 @@
     };
   }
 
-  return { createSingleUseGuard, matchesSpeech, normalizeHanzi, normalizePinyin };
+  return { createSingleUseGuard, createTapCooldown, matchesSpeech, normalizeHanzi, normalizePinyin };
 });
