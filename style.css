@@ -176,6 +176,31 @@ img { -webkit-user-drag: none; }
 .tile .t-sub { font-weight: 700; font-size: 14px; opacity: .9; }
 .tile.tile-pattern { background: linear-gradient(100deg, #00897B, #43A047); }
 
+/* ─ Daily Quest ────────────────────────────────────────────────────────── */
+.quest-card {
+  max-width: 920px; margin: 18px auto 0; background: #fff;
+  border-radius: var(--r-lg); box-shadow: var(--shadow); padding: 16px 16px 12px;
+  border: 3px solid #FFB300;
+}
+.quest-card.all-done { border-color: #66BB6A; background: linear-gradient(180deg, #f1f8e9, #fff); }
+.quest-card .q-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.quest-card .q-emoji { font-size: 36px; }
+.quest-card .q-title { font-weight: 900; font-size: 21px; }
+.quest-card .q-sub { font-weight: 800; font-size: 14px; color: var(--ink-soft); }
+.quest-card .q-list { display: flex; flex-direction: column; gap: 9px; }
+.quest-card .q-task {
+  display: flex; align-items: center; gap: 12px; padding: 11px 13px;
+  background: #fffaf0; border: 2px solid #ffe0a3; border-radius: 14px;
+  transition: transform .1s;
+}
+.quest-card .q-task:active { transform: scale(.98); }
+.quest-card .q-task.ok { background: #e8f5e9; border-color: #a5d6a7; opacity: .75; }
+.quest-card .q-task.ok .q-name { text-decoration: line-through; }
+.quest-card .q-check { font-size: 25px; }
+.quest-card .q-name { font-weight: 900; font-size: 16px; }
+.quest-card .q-mode { font-weight: 700; font-size: 13px; color: var(--ink-soft); }
+.quest-card .q-go { font-size: 23px; color: #FFB300; }
+
 /* ─ Pattern Drill ──────────────────────────────────────────────────────── */
 .pat-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
 .pat-head .pat-icon { font-size: 34px; }

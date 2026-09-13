@@ -112,7 +112,7 @@ const createSpeechGuard = window.MandoSpeech.createSingleUseGuard;
 
 /* ── Persistent state ────────────────────────────────────────────────── */
 const SAVE_KEY = 'mandoquest.v1';
-const DEFAULT_STATE = { progress: {}, streak: { count: 0, last: '' }, sentence: { best: 0 }, patterns: {}, unlockSeen: [], gateV2: false };
+const DEFAULT_STATE = { progress: {}, streak: { count: 0, last: '' }, sentence: { best: 0 }, patterns: {}, unlockSeen: [], gateV2: false, quest: null };
 let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
 function load() {
   try {
@@ -266,6 +266,7 @@ function handleNav(target) {
 /* ── Home screen ─────────────────────────────────────────────────────── */
 function renderHome() {
   refreshUnlocks(false);
+  renderQuest();
   $('#hud-streak').textContent = state.streak.count || 0;
   $('#hud-stars').textContent = totalStars();
   mountDragon($('#home-dragon'));
@@ -768,6 +769,7 @@ function modeSentence() {
 }
 function finishSentence(correct, total) {
   const stars = computeStars(correct, total);
+  if (stars >= 1) questComplete('sentence');
   bumpStreak(); state.sentence.best = Math.max(state.sentence.best || 0, stars);
   save(); refreshUnlocks(true);
   showResult(stars, correct * 15, correct, total, 'Sentence Master! 🧩', null);
@@ -785,6 +787,7 @@ function finishRound(o) {
   const stars = (o.stars != null) ? o.stars : computeStars(o.correct, o.total);
   const xp = (o.xp != null) ? o.xp : o.correct * 10;
   if (o.catId) { ensureCat(o.catId); addXp(o.catId, xp); setBest(o.catId, o.mode, stars); }
+  if (stars >= 1) questComplete(o.catId === '_galaxy' ? 'galaxy' : 'mode:' + o.catId + ':' + o.mode);
   bumpStreak(); save(); refreshUnlocks(true);
   showResult(stars, xp, o.correct, o.total, o.winText, o.catId || null);
 }
@@ -883,8 +886,115 @@ function finishPattern(p, correct, total) {
   const stars = computeStars(correct, total);
   if (!state.patterns) state.patterns = {};
   if (stars > (state.patterns[p.id] || 0)) state.patterns[p.id] = stars;
+  if (stars >= 1) questComplete('pattern');
   bumpStreak(); save();
   showResult(stars, correct * 15, correct, total, 'Pattern: ' + p.title + ' 🧩', null);
+}
+
+/* ===========================================================================
+   Daily Quest — three jobs a day, drawn from what Matthew has actually reached
+   Free play lets him replay the same easy topic forever and never meet old
+   vocabulary again. The quest forces the spread: one topic he already beat (so
+   it gets retrieved instead of fading), the topic he is working on now, and one
+   speaking/building round. Seeded by the date, so the list is identical all day
+   and new tomorrow — closing the app cannot reroll it into something easier.
+   =========================================================================== */
+function questSeed(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function questRng(seed) {
+  let t = seed >>> 0;
+  return () => {
+    t = (t + 0x6D2B79F5) >>> 0;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const QUEST_EXTRAS = {
+  pattern:  { icon: '🗣️', title: 'Pattern Drill',    sub: 'Learn a sentence frame' },
+  sentence: { icon: '🧩', title: 'Sentence Builder', sub: 'Put the words in order' },
+  galaxy:   { icon: '🌌', title: 'Galaxy Mix',       sub: 'Words from every topic' }
+};
+function buildQuest() {
+  const today = todayStr();
+  if (state.quest && state.quest.date === today) return state.quest;
+
+  const rnd = questRng(questSeed(today));
+  const one = a => a[Math.floor(rnd() * a.length)];
+  const unlocked = MANDO_DATA.categories.filter((_, i) => isUnlocked(i));
+  const beaten = unlocked.filter(c => categoryStars(c.id) >= starsToUnlock());
+  const working = unlocked.find(c => categoryStars(c.id) < starsToUnlock()) || unlocked[unlocked.length - 1];
+  const tasks = [];
+
+  // 1 — retrieve an old topic. On day one nothing is beaten yet, so any open topic.
+  const rc = beaten.length ? one(beaten) : one(unlocked);
+  const rm = one(MODES);
+  tasks.push({ key: 'mode:' + rc.id + ':' + rm.key, icon: '🔁', title: 'Review: ' + rc.name, sub: rm.name });
+
+  // 2 — the topic in progress, aimed at its weakest mode so the gap closes
+  let weak = MODES[0];
+  MODES.forEach(mo => { if (getBest(working.id, mo.key) < getBest(working.id, weak.key)) weak = mo; });
+  const k2 = 'mode:' + working.id + ':' + weak.key;
+  if (!tasks.some(t => t.key === k2)) {
+    tasks.push({ key: k2, icon: '🎯', title: 'Practice: ' + working.name, sub: weak.name });
+  } else {                                   // same topic AND mode as the review — take another mode
+    const alt = one(MODES.filter(m => m.key !== weak.key));
+    tasks.push({ key: 'mode:' + working.id + ':' + alt.key, icon: '🎯', title: 'Practice: ' + working.name, sub: alt.name });
+  }
+
+  // 3 — produce, not just recognise
+  const extras = ['pattern', 'sentence'].concat(unlocked.length >= 3 ? ['galaxy'] : []);
+  const ek = one(extras);
+  tasks.push(Object.assign({ key: ek }, QUEST_EXTRAS[ek]));
+
+  state.quest = { date: today, tasks, done: [] };
+  save();
+  return state.quest;
+}
+// A task only counts when the round is actually passed (>= 1 star), so the
+// quest cannot be cleared by losing three times.
+function questComplete(key) {
+  const q = state.quest;
+  if (!q || q.date !== todayStr()) return;
+  if (!q.done) q.done = [];
+  if (!q.tasks.some(t => t.key === key) || q.done.indexOf(key) !== -1) return;
+  q.done.push(key);
+  save();
+  if (q.done.length === q.tasks.length) { sfx('unlock'); toast('🏆 Daily Quest complete! Amazing, Matthew!'); }
+  else toast('✅ Quest ' + q.done.length + '/' + q.tasks.length + ' done!');
+}
+function runQuestTask(key) {
+  if (key === 'pattern')  { showScreen('screen-game'); modePattern(); return; }
+  if (key === 'sentence') { showScreen('screen-game'); modeSentence(); return; }
+  if (key === 'galaxy')   { launchGalaxy(); return; }
+  const p = key.split(':');
+  launch(p[2], p[1]);
+}
+function renderQuest() {
+  const host = $('#quest-card');
+  if (!host) return;
+  const q = buildQuest(), done = q.done || [];
+  const all = done.length === q.tasks.length;
+  host.className = 'quest-card' + (all ? ' all-done' : '');
+  host.innerHTML =
+    '<div class="q-head"><span class="q-emoji">' + (all ? '🏆' : '📅') + '</span>' +
+      '<div><div class="q-title">' + (all ? 'All done today!' : "Today's Quest") + '</div>' +
+      '<div class="q-sub">' + done.length + ' of ' + q.tasks.length + ' finished</div></div></div>' +
+    '<div class="q-list">' + q.tasks.map(t => {
+      const ok = done.indexOf(t.key) !== -1;
+      return '<div class="q-task' + (ok ? ' ok' : '') + '" data-qkey="' + t.key + '">' +
+        '<span class="q-check">' + (ok ? '✅' : t.icon) + '</span>' +
+        '<div class="q-text"><div class="q-name">' + t.title + '</div>' +
+        '<div class="q-mode">' + t.sub + '</div></div>' +
+        '<span class="spacer"></span><span class="q-go">' + (ok ? '' : '➜') + '</span></div>';
+    }).join('') + '</div>';
+  $$('#quest-card .q-task').forEach(node => {
+    if (node.classList.contains('ok')) return;
+    node.onclick = () => runQuestTask(node.dataset.qkey);
+  });
 }
 
 /* ── Init ────────────────────────────────────────────────────────────── */
