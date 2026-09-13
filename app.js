@@ -112,7 +112,7 @@ const createSpeechGuard = window.MandoSpeech.createSingleUseGuard;
 
 /* ── Persistent state ────────────────────────────────────────────────── */
 const SAVE_KEY = 'mandoquest.v1';
-const DEFAULT_STATE = { progress: {}, streak: { count: 0, last: '' }, sentence: { best: 0 }, patterns: {}, unlockSeen: [], gateV2: false, quest: null };
+const DEFAULT_STATE = { progress: {}, streak: { count: 0, last: '' }, sentence: { best: 0 }, patterns: {}, unlockSeen: [], gateV2: false, quest: null, srs: {} };
 let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
 function load() {
   try {
@@ -124,6 +124,51 @@ function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
 
 function ensureCat(id) { if (!state.progress[id]) state.progress[id] = { words: {}, xp: 0, stars: {} }; }
 function addWordCorrect(id, hanzi) { ensureCat(id); state.progress[id].words[hanzi] = (state.progress[id].words[hanzi] || 0) + 1; }
+
+/* ── Spaced repetition ───────────────────────────────────────────────────
+   The app used to count only the words he got RIGHT and never the ones he got
+   wrong, so it had no idea which words were weak. Every word now carries a
+   streak and a due date: miss it and it returns tomorrow, nail it repeatedly
+   and it backs off to a month. Review then targets what is about to be
+   forgotten instead of whatever the shuffle happened to pick.               */
+const SRS_STEPS = [1, 2, 4, 8, 16, 32];        // days, indexed by correct streak
+function addDays(ds, n) {
+  const [y, m, d] = ds.split('-').map(Number);
+  const t = new Date(y, m - 1, d + n);
+  return dateStr(t);
+}
+function recordWord(catId, hanzi, ok) {
+  // '_galaxy' / '_srs' are virtual decks — don't create progress rows for them
+  if (ok && catId && catId.charAt(0) !== '_') addWordCorrect(catId, hanzi);
+  if (!state.srs) state.srs = {};
+  const e = state.srs[hanzi] || { n: 0, due: todayStr(), miss: 0 };
+  if (ok) { e.n = Math.min(e.n + 1, SRS_STEPS.length); e.due = addDays(todayStr(), SRS_STEPS[e.n - 1]); }
+  else { e.n = 0; e.miss = (e.miss || 0) + 1; e.due = addDays(todayStr(), 1); }
+  state.srs[hanzi] = e;
+}
+// Words he has met before, from open topics, whose rest day has arrived.
+function dueWords() {
+  const t = todayStr(), out = [];
+  if (!state.srs) return out;
+  MANDO_DATA.categories.forEach((c, i) => {
+    if (!isUnlocked(i)) return;
+    c.words.forEach(w => {
+      const e = state.srs[w.hanzi];
+      if (e && e.due <= t) out.push(Object.assign({}, w, { _src: c.id, _miss: e.miss || 0 }));
+    });
+  });
+  // weakest first, so a short session still covers the shakiest words
+  return out.sort((a, b) => b._miss - a._miss);
+}
+function launchSrs() {
+  const due = dueWords();
+  if (!due.length) { toast('🧠 Nothing to review today — well done!'); return; }
+  MANDO_DATA._virtual['_srs'] = {
+    id: '_srs', name: 'Memory Check', icon: '🧠', color: '#7E57C2',
+    words: due.slice(0, 12)
+  };
+  goCategory('_srs');
+}
 function addXp(id, n) { ensureCat(id); state.progress[id].xp += n; }
 function setBest(id, mode, stars) { ensureCat(id); if (stars > (state.progress[id].stars[mode] || 0)) state.progress[id].stars[mode] = stars; }
 function getBest(id, mode) { return (state.progress[id] && state.progress[id].stars[mode]) || 0; }
@@ -289,6 +334,16 @@ function renderHome() {
     grid.appendChild(card);
   });
 
+  // Memory Check tile — only when the schedule actually has something due
+  const dueNow = dueWords().length;
+  const srsTile = $('#srs-tile');
+  if (srsTile) {
+    srsTile.hidden = dueNow === 0;
+    const sub = $('#srs-sub');
+    if (sub) sub.textContent = dueNow + ' word' + (dueNow === 1 ? '' : 's') + ' ready to review';
+    srsTile.onclick = launchSrs;
+  }
+
   // Galaxy Mix tile — appears once 3+ topics are unlocked
   const unlockedCats = MANDO_DATA.categories.filter((_, i) => isUnlocked(i));
   if (unlockedCats.length >= 3) {
@@ -354,7 +409,10 @@ const MODES = [
   { key: 'match',  name: 'Match & Drop',   sub: 'Drag the picture', emoji: '🧲', color: 'var(--brand)' },
   { key: 'listen', name: 'Listen & Choose', sub: 'Hear & tap',       emoji: '👂', color: 'var(--sky)' },
   { key: 'hunt',   name: 'Hanzi Hunt',     sub: 'Beat the clock',   emoji: '⚡', color: 'var(--grape)' },
-  { key: 'speak',  name: 'Speak!',         sub: 'Say it out loud',  emoji: '🎤', color: 'var(--brand-2)' }
+  { key: 'speak',  name: 'Speak!',         sub: 'Say it out loud',  emoji: '🎤', color: 'var(--brand-2)' },
+  // The only mode with no menu to pick from. Everything else shows the answer
+  // somewhere on screen; this one asks him to produce it from memory.
+  { key: 'recall', name: 'Write It!',       sub: 'Type from memory', emoji: '✍️', color: '#7E57C2' }
 ];
 function launchGalaxy() {
   const pool = [];
@@ -368,13 +426,16 @@ function launchGalaxy() {
 
 function renderCategory(catId) {
   const cat = MANDO_DATA.getCategory(catId);
-  const isGalaxy = catId === '_galaxy';
+  const isGalaxy = catId === '_galaxy', isSrs = catId === '_srs';
   $('#cat-title').textContent = cat.icon + ' ' + cat.name;
-  $('#cat-mastery').textContent = isGalaxy
+  $('#cat-mastery').textContent = (isGalaxy || isSrs)
     ? cat.words.length + ' words'
     : categoryStars(catId) + '/' + maxStars() + ' ⭐';
   mountDragon($('#cat-dragon'));
-  $('#cat-speech').textContent = (isGalaxy ? '🌌 Mix from all topics' : TIER_BADGE[catTier(catId)]) + ' • Choose a game! 🎮';
+  $('#cat-speech').textContent =
+    (isGalaxy ? '🌌 Mix from all topics'
+     : isSrs   ? '🧠 Words you are about to forget'
+     : TIER_BADGE[catTier(catId)]) + ' • Choose a game! 🎮';
   const list = $('#mode-list'); list.innerHTML = '';
   MODES.forEach(mo => {
     const best = getBest(catId, mo.key);
@@ -389,7 +450,7 @@ function renderCategory(catId) {
 }
 function launch(key, catId) {
   showScreen('screen-game');
-  ({ match: modeMatch, listen: modeListen, hunt: modeHunt, speak: modeSpeak })[key](catId);
+  ({ match: modeMatch, listen: modeListen, hunt: modeHunt, speak: modeSpeak, recall: modeRecall })[key](catId);
 }
 
 /* ── shared game render (content + reacting mascot) ──────────────────── */
@@ -471,7 +532,7 @@ function modeMatch(catId) {
       item.classList.add('used'); item.style.visibility = 'hidden';
       target.classList.add('filled');
       target.insertAdjacentHTML('beforeend', '<div style="font-size:24px;margin-top:4px">✅</div>');
-      matched++; addWordCorrect(catId, item.dataset.hz); speak(item.dataset.hz);
+      matched++; recordWord(catId, item.dataset.hz, true); speak(item.dataset.hz);
       sfx('correct'); reactGame('happy', pick(MANDO_DATA.phrases.correct)); setDots(n, matched);
       $('#game-score').textContent = matched;
       // The round only ends when everything is matched, so `correct` was always
@@ -479,7 +540,7 @@ function modeMatch(catId) {
       // misses against the score instead.
       if (matched === n) setTimeout(() => finishRound({ catId, mode: 'match', correct: Math.max(0, n - wrong), total: n }), 900);
     } else {
-      wrong++;
+      wrong++; recordWord(catId, item.dataset.hz, false);
       if (item.animate) item.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-7px)' }, { transform: 'translateX(7px)' }, { transform: 'translateX(0)' }], { duration: 300 });
       sfx('wrong'); reactGame('sad', pick(MANDO_DATA.phrases.wrong));
     }
@@ -513,10 +574,11 @@ function modeListen(catId) {
       c.onclick = () => {
         if (answered) return; answered = true;
         if (o.hanzi === w.hanzi) {
-          c.classList.add('correct'); correct++; addWordCorrect(catId, w.hanzi); speak(w.hanzi);
+          c.classList.add('correct'); correct++; recordWord(catId, w.hanzi, true); speak(w.hanzi);
           sfx('correct'); reactGame('happy', pick(MANDO_DATA.phrases.correct));
         } else {
-          c.classList.add('wrong'); sfx('wrong'); reactGame('sad', pick(MANDO_DATA.phrases.wrong));
+          c.classList.add('wrong'); recordWord(catId, w.hanzi, false);
+          sfx('wrong'); reactGame('sad', pick(MANDO_DATA.phrases.wrong));
           $$('#ls-opts .opt').forEach(x => { if (x.__hz === w.hanzi) x.classList.add('correct'); });
         }
         $$('#ls-opts .opt').forEach(x => { if (x !== c && !x.classList.contains('correct')) x.classList.add('dim'); });
@@ -560,11 +622,11 @@ function modeHunt(catId) {
   function tap(w, c) {
     if (!running || !target) return;
     if (w.hanzi === target.hanzi) {
-      score++; addWordCorrect(catId, w.hanzi); $('#game-score').textContent = score;
+      score++; recordWord(catId, w.hanzi, true); $('#game-score').textContent = score;
       c.classList.add('correct'); setTimeout(() => c.classList.remove('correct'), 300);
       sfx('correct'); reactGame('happy', pick(MANDO_DATA.phrases.correct)); nextTarget();
     } else {
-      misses++;
+      misses++; recordWord(catId, target.hanzi, false);
       c.classList.add('wrong'); setTimeout(() => c.classList.remove('wrong'), 300);
       sfx('wrong'); reactGame('sad', pick(MANDO_DATA.phrases.wrong));
     }
@@ -649,7 +711,7 @@ function modeSpeak(catId) {
     const markCorrect = () => guard.run(() => {
       disableTurn(); abortRecognition(); resumeAfterSpeech();
       fb.className = 'feedback-line good'; fb.textContent = '✅ ' + pick(['Hebat!', 'Great!', 'Perfect!', 'Wow!']);
-      correct++; addWordCorrect(catId, w.hanzi); sfx('correct'); reactGame('excited'); confetti();
+      correct++; recordWord(catId, w.hanzi, true); sfx('correct'); reactGame('excited'); confetti();
       setTimeout(() => { i++; show(); }, 1200);
     });
 
@@ -739,7 +801,13 @@ function modeSentence() {
       'Put the words in order! 🧩');
 
     const build = $('#sent-build'), bankEl = $('#sent-bank'), placed = [];
-    shuffle(s.tokens.map((tk, idx) => ({ tk, idx }))).forEach(o => {
+    // Only the correct tokens used to be offered, so ordering 3 of them was a
+    // 6-way guess with no way to pick a wrong word. Decoys make it a real choice.
+    const bank = [];
+    MANDO_DATA.sentences.forEach(o => o.tokens.forEach(tk => { if (bank.indexOf(tk) === -1) bank.push(tk); }));
+    const decoys = sample(bank.filter(tk => s.tokens.indexOf(tk) === -1), s.tokens.length >= 5 ? 2 : 3)
+      .map(tk => ({ tk, idx: -1 }));
+    shuffle(s.tokens.map((tk, idx) => ({ tk, idx })).concat(decoys)).forEach(o => {
       const src = el('div', 'word-card', o.tk);
       src.onclick = () => {
         if (src.classList.contains('used')) return;
@@ -787,7 +855,7 @@ function finishRound(o) {
   const stars = (o.stars != null) ? o.stars : computeStars(o.correct, o.total);
   const xp = (o.xp != null) ? o.xp : o.correct * 10;
   if (o.catId) { ensureCat(o.catId); addXp(o.catId, xp); setBest(o.catId, o.mode, stars); }
-  if (stars >= 1) questComplete(o.catId === '_galaxy' ? 'galaxy' : 'mode:' + o.catId + ':' + o.mode);
+  if (stars >= 1) questComplete(o.catId === '_galaxy' ? 'galaxy' : o.catId === '_srs' ? 'srs' : 'mode:' + o.catId + ':' + o.mode);
   bumpStreak(); save(); refreshUnlocks(true);
   showResult(stars, xp, o.correct, o.total, o.winText, o.catId || null);
 }
@@ -892,6 +960,73 @@ function finishPattern(p, correct, total) {
 }
 
 /* ===========================================================================
+   MODE 7 — Write It! (recall, no options)
+   Every other mode shows the answer somewhere: an option list, a grid, a set of
+   tokens. Recognising is far easier than recalling, so he could hold 3 stars in
+   a topic and still not produce one word unprompted. Here there is nothing to
+   pick from — picture and meaning in, pinyin out. Tones are not required
+   (typing ǎ on a phone is a keyboard problem, not a Mandarin one).
+   =========================================================================== */
+const normPinyin = window.MandoSpeech.normalizePinyin;
+function pinyinHint(pinyin) {
+  return String(pinyin).split(/\s+/).map(sy => sy.charAt(0) + '·'.repeat(Math.max(1, sy.length - 1))).join(' ');
+}
+function modeRecall(catId) {
+  currentGame = { catId, replay: () => { showScreen('screen-game'); modeRecall(catId); } };
+  const cat = MANDO_DATA.getCategory(catId);
+  const qs = sample(cat.words, Math.min(6, cat.words.length));
+  let i = 0, correct = 0;
+
+  function show() {
+    if (i >= qs.length) { finishRound({ catId, mode: 'recall', correct, total: qs.length }); return; }
+    const w = qs[i];
+    setDots(qs.length, i);
+    $('#game-score').textContent = correct;
+    gameRender(
+      '<div class="prompt-card"><div class="rc-emoji">' + (w.emoji || '❓') + '</div>' +
+        '<div class="rc-en">' + w.en + '</div></div>' +
+      '<div class="rc-box">' +
+        '<input class="rc-input" id="rc-in" type="text" autocomplete="off" autocorrect="off" ' +
+          'autocapitalize="none" spellcheck="false" placeholder="type the pinyin…">' +
+        '<div class="rc-row"><button class="btn ghost" id="rc-hint">💡 Hint</button>' +
+        '<button class="btn" id="rc-go">Check ✓</button></div>' +
+        '<div class="feedback-line" id="rc-fb"></div>' +
+      '</div>',
+      'Type it from memory! ✍️');
+
+    const inp = $('#rc-in'), fb = $('#rc-fb');
+    let answered = false;
+    try { inp.focus(); } catch (e) {}
+
+    const reveal = ok => {
+      answered = true;
+      inp.disabled = true; $('#rc-go').disabled = true; $('#rc-hint').disabled = true;
+      recordWord(catId, w.hanzi, ok);
+      if (ok) { correct++; sfx('correct'); reactGame('excited', pick(MANDO_DATA.phrases.correct)); confetti(); }
+      else { sfx('wrong'); reactGame('sad', pick(MANDO_DATA.phrases.wrong)); }
+      fb.className = 'feedback-line ' + (ok ? 'good' : 'bad');
+      fb.innerHTML = (ok ? '✅ ' : '❌ ') + '<b>' + w.hanzi + '</b> · ' + w.pinyin;
+      speak(w.hanzi);
+      setTimeout(() => { i++; show(); }, ok ? 1400 : 2400);   // longer on a miss, so he reads it
+    };
+
+    $('#rc-go').onclick = () => {
+      if (answered) return;
+      const typed = normPinyin(inp.value);
+      if (!typed) { toast('Type the pinyin first ✍️'); return; }
+      reveal(typed === normPinyin(w.pinyin));
+    };
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') $('#rc-go').click(); });
+    $('#rc-hint').onclick = () => {
+      if (answered) return;
+      fb.className = 'feedback-line';
+      fb.textContent = '💡 ' + pinyinHint(w.pinyin);
+    };
+  }
+  show();
+}
+
+/* ===========================================================================
    Daily Quest — three jobs a day, drawn from what Matthew has actually reached
    Free play lets him replay the same easy topic forever and never meet old
    vocabulary again. The quest forces the spread: one topic he already beat (so
@@ -929,10 +1064,16 @@ function buildQuest() {
   const working = unlocked.find(c => categoryStars(c.id) < starsToUnlock()) || unlocked[unlocked.length - 1];
   const tasks = [];
 
-  // 1 — retrieve an old topic. On day one nothing is beaten yet, so any open topic.
-  const rc = beaten.length ? one(beaten) : one(unlocked);
-  const rm = one(MODES);
-  tasks.push({ key: 'mode:' + rc.id + ':' + rm.key, icon: '🔁', title: 'Review: ' + rc.name, sub: rm.name });
+  // 1 — retrieve. Once enough words are due, the schedule knows better than a
+  // shuffle which ones are about to be forgotten, so it takes this slot.
+  const due = dueWords();
+  if (due.length >= 6) {
+    tasks.push({ key: 'srs', icon: '🧠', title: 'Memory Check', sub: due.length + ' words due today' });
+  } else {
+    const rc = beaten.length ? one(beaten) : one(unlocked);
+    const rm = one(MODES);
+    tasks.push({ key: 'mode:' + rc.id + ':' + rm.key, icon: '🔁', title: 'Review: ' + rc.name, sub: rm.name });
+  }
 
   // 2 — the topic in progress, aimed at its weakest mode so the gap closes
   let weak = MODES[0];
@@ -970,6 +1111,7 @@ function runQuestTask(key) {
   if (key === 'pattern')  { showScreen('screen-game'); modePattern(); return; }
   if (key === 'sentence') { showScreen('screen-game'); modeSentence(); return; }
   if (key === 'galaxy')   { launchGalaxy(); return; }
+  if (key === 'srs')      { launchSrs(); return; }
   const p = key.split(':');
   launch(p[2], p[1]);
 }
