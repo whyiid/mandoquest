@@ -11,7 +11,9 @@ const {
   createSingleUseGuard,
   matchesSpeech,
   normalizeHanzi,
-  normalizePinyin
+  normalizePinyin,
+  pinyinFromNumbers,
+  compactToned
 } = require('../speech.js');
 
 const RED = { hanzi: '红色', pinyin: 'hóng sè' };
@@ -119,4 +121,29 @@ test('tap cooldown blocks a second tap even after the question rerenders', () =>
   now = 1450;
   assert.equal(cooldown.run(() => { advances++; }), true);
   assert.equal(advances, 2);
+});
+
+test('numbered pinyin becomes tone marks', () => {
+  assert.equal(pinyinFromNumbers('ni3 hao3'), 'nǐ hǎo');
+  assert.equal(pinyinFromNumbers('ni3hao3'), 'nǐ hǎo');
+  assert.equal(pinyinFromNumbers('xie4 xie'), 'xiè xie');
+  assert.equal(pinyinFromNumbers('lv4'), 'lǜ');
+});
+
+test('tone mark lands on the right vowel', () => {
+  assert.equal(pinyinFromNumbers('liu4'), 'liù');   // iu -> mark the u
+  assert.equal(pinyinFromNumbers('gui1'), 'guī');   // ui -> mark the i
+  assert.equal(pinyinFromNumbers('hao3'), 'hǎo');   // a wins over o
+});
+
+test('already-toned input is left alone', () => {
+  assert.equal(pinyinFromNumbers('nǐ hǎo'), 'nǐ hǎo');
+});
+
+test('compactToned separates a tone error from a word error', () => {
+  const want = compactToned('hǎo');
+  assert.equal(compactToned(pinyinFromNumbers('hao3')), want);
+  assert.notEqual(compactToned(pinyinFromNumbers('hao2')), want);
+  // letters still match even when the tone does not
+  assert.equal(normalizePinyin('hǎo'), normalizePinyin('háo'));
 });

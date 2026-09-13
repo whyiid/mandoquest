@@ -117,7 +117,7 @@ const weakSrsEntries = window.MandoLearning.weakSrsEntries;
 /* ── Persistent state ────────────────────────────────────────────────── */
 // Bumped with the service-worker CACHE version. Shown on the Progress screen so
 // "am I actually on the new build?" can be answered by looking, not by asking.
-const APP_BUILD = 'v30';
+const APP_BUILD = 'v31';
 const SAVE_KEY = 'mandoquest.v1';
 const DEFAULT_STATE = { progress: {}, streak: { count: 0, last: '' }, sentence: { best: 0 }, patterns: {}, unlockSeen: [], gateV2: false, quest: null, srs: {}, tones: { best: 0 }, hear: { best: 0 } };
 let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -979,6 +979,8 @@ function finishPattern(p, correct, total) {
    (typing ǎ on a phone is a keyboard problem, not a Mandarin one).
    =========================================================================== */
 const normPinyin = window.MandoSpeech.normalizePinyin;
+const pinyinFromNumbers = window.MandoSpeech.pinyinFromNumbers;
+const compactToned = window.MandoSpeech.compactToned;
 function pinyinHint(pinyin) {
   return String(pinyin).split(/\s+/).map(sy => sy.charAt(0) + '·'.repeat(Math.max(1, sy.length - 1))).join(' ');
 }
@@ -998,7 +1000,9 @@ function modeRecall(catId) {
         '<div class="rc-en">' + w.en + '</div></div>' +
       '<div class="rc-box">' +
         '<input class="rc-input" id="rc-in" type="text" autocomplete="off" autocorrect="off" ' +
-          'autocapitalize="none" spellcheck="false" placeholder="type the pinyin…">' +
+          'autocapitalize="none" spellcheck="false" placeholder="hao3">' +
+        '<div class="rc-live" id="rc-live"><span class="rc-tip">type the tone as a number: ' +
+          '<b>hao3</b> → <b>hǎo</b></span></div>' +
         '<div class="rc-row"><button class="btn ghost" id="rc-hint">💡 Hint</button>' +
         '<button class="btn" id="rc-go">Check ✓</button></div>' +
         '<div class="feedback-line" id="rc-fb"></div>' +
@@ -1009,25 +1013,41 @@ function modeRecall(catId) {
     let answered = false;
     try { inp.focus(); } catch (e) {}
 
-    const reveal = ok => {
+    const reveal = (ok, toneMiss) => {
       answered = true;
       inp.disabled = true; $('#rc-go').disabled = true; $('#rc-hint').disabled = true;
       recordWord(catId, w.hanzi, ok);
       if (ok) { correct++; sfx('correct'); reactGame('excited', pick(MANDO_DATA.phrases.correct)); confetti(); }
       else { sfx('wrong'); reactGame('sad', pick(MANDO_DATA.phrases.wrong)); }
       fb.className = 'feedback-line ' + (ok ? 'good' : 'bad');
-      fb.innerHTML = (ok ? '✅ ' : '❌ ') + '<b>' + w.hanzi + '</b> · ' + w.pinyin;
+      fb.innerHTML = ok
+        ? '✅ <b>' + w.hanzi + '</b> · ' + w.pinyin
+        : (toneMiss
+            ? '🎵 Right word, wrong tone — you wrote <b>' + toneMiss + '</b>, it is <b>' + w.pinyin + '</b>'
+            : '❌ <b>' + w.hanzi + '</b> · ' + w.pinyin);
       speak(w.hanzi);
       setTimeout(() => { i++; show(); }, ok ? 1400 : 2400);   // longer on a miss, so he reads it
     };
 
+    // Three outcomes, not two: a right word with the wrong tone is a different
+    // mistake from a wrong word, and saying so is the whole point of asking for
+    // tones at all.
     $('#rc-go').onclick = () => {
       if (answered) return;
-      const typed = normPinyin(inp.value);
-      if (!typed) { toast('Type the pinyin first ✍️'); return; }
-      reveal(typed === normPinyin(w.pinyin));
+      if (!normPinyin(inp.value)) { toast('Type the pinyin first ✍️'); return; }
+      const typed = pinyinFromNumbers(inp.value);
+      const lettersOk = normPinyin(typed) === normPinyin(w.pinyin);
+      const toneOk = compactToned(typed) === compactToned(w.pinyin);
+      reveal(toneOk, lettersOk && !toneOk ? typed : null);
     };
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') $('#rc-go').click(); });
+    inp.addEventListener('input', () => {
+      const live = $('#rc-live');
+      const shown = pinyinFromNumbers(inp.value);
+      live.innerHTML = shown
+        ? '<span class="rc-shown">' + shown + '</span>'
+        : '<span class="rc-tip">type the tone as a number: <b>hao3</b> → <b>hǎo</b></span>';
+    });
     $('#rc-hint').onclick = () => {
       if (answered) return;
       fb.className = 'feedback-line';

@@ -245,6 +245,10 @@ img { -webkit-user-drag: none; }
 .rc-input:disabled { background: #f3f0fa; }
 .rc-row { display: flex; gap: 10px; justify-content: center; margin-top: 12px; }
 .rc-row .btn { flex: 1; max-width: 190px; }
+.rc-live { text-align: center; margin-top: 10px; min-height: 34px; }
+.rc-live .rc-shown { font-size: 28px; font-weight: 900; color: #7E57C2; letter-spacing: .5px; }
+.rc-live .rc-tip { font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+.rc-live .rc-tip b { color: #7E57C2; }
 
 /* ─ Daily Quest ────────────────────────────────────────────────────────── */
 .quest-card {
