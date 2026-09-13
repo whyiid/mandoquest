@@ -176,6 +176,58 @@ img { -webkit-user-drag: none; }
 .tile .t-sub { font-weight: 700; font-size: 14px; opacity: .9; }
 .tile.tile-pattern { background: linear-gradient(100deg, #00897B, #43A047); }
 .tile.tile-srs { background: linear-gradient(100deg, #5E35B1, #7E57C2); }
+.tile.tile-tone { background: linear-gradient(100deg, #D81B60, #F06292); }
+.tile.tile-hear { background: linear-gradient(100deg, #0277BD, #29B6F6); }
+
+/* activity tiles sit in a 2-up grid once there are more than a couple */
+.extras { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
+  width: 100%; max-width: 920px; margin: 0 auto; }
+.extras .tile { margin: 0; padding: 15px 16px; gap: 11px; }
+.extras .tile .t-emoji { font-size: 32px; }
+.extras .tile .t-name { font-size: 17px; }
+.extras .tile .t-sub { font-size: 12.5px; }
+@media (max-width: 520px) { .extras { grid-template-columns: 1fr; } }
+
+/* ─ Tone Trainer ───────────────────────────────────────────────────────── */
+.tn-hanzi { font-family: var(--font-hanzi); font-size: 78px; line-height: 1.1; font-weight: 700; }
+.tn-ask { text-align: center; font-weight: 800; font-size: 17px; margin: 14px 0 12px; }
+.opt.tn-opt { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 14px 10px; }
+.tn-sign { font-size: 40px; font-weight: 900; line-height: 1; color: #D81B60; }
+.tn-num  { font-weight: 900; font-size: 17px; }
+.tn-name { font-weight: 700; font-size: 12.5px; color: var(--ink-soft); text-align: center; }
+.tn-hz   { font-family: var(--font-hanzi); font-size: 38px; font-weight: 700; line-height: 1.1; }
+.tn-py   { font-weight: 800; font-size: 16px; color: #D81B60; }
+.opt.hs-opt { font-size: 17px; font-weight: 800; padding: 16px 14px; text-align: left; }
+
+/* ─ Progress (parent view) ─────────────────────────────────────────────── */
+.stats-body { width: 100%; max-width: 920px; margin: 0 auto; }
+.st-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.st-cell { background: #fff; border-radius: var(--r-md); padding: 14px 10px; text-align: center;
+  box-shadow: var(--shadow-sm); }
+.st-big { font-size: 27px; font-weight: 900; }
+.st-lbl { font-size: 12.5px; font-weight: 700; color: var(--ink-soft); margin-top: 2px; }
+.st-h { font-size: 19px; font-weight: 900; margin: 22px 2px 10px; }
+.st-weak { display: flex; flex-direction: column; gap: 8px; }
+.st-word { display: flex; align-items: center; gap: 12px; background: #fff; border-radius: 14px;
+  padding: 11px 14px; box-shadow: var(--shadow-sm); }
+.st-emoji { font-size: 26px; }
+.st-hz { font-family: var(--font-hanzi); font-size: 21px; font-weight: 700; }
+.st-py { font-family: var(--font); font-size: 14px; font-weight: 700; color: var(--ink-soft); }
+.st-en { font-size: 13.5px; font-weight: 700; color: var(--ink-soft); }
+.st-miss { background: #ffe1e1; color: #c62828; font-weight: 900; font-size: 14px;
+  padding: 5px 11px; border-radius: 999px; }
+.st-empty { background: #fff; border-radius: 14px; padding: 16px; font-weight: 700;
+  color: var(--ink-soft); box-shadow: var(--shadow-sm); font-size: 14px; }
+.st-topics { display: flex; flex-direction: column; gap: 7px; }
+.st-topic { display: flex; align-items: center; gap: 11px; background: #fff; border-radius: 12px;
+  padding: 9px 13px; box-shadow: var(--shadow-sm); }
+.st-topic.locked { opacity: .5; }
+.st-ic { font-size: 21px; }
+.st-tn { font-weight: 800; font-size: 14px; width: 140px; flex: 0 0 auto; }
+.st-bar { flex: 1; height: 9px; border-radius: 999px; background: #ece9f6; overflow: hidden; }
+.st-fill { height: 100%; border-radius: 999px; }
+.st-num { font-weight: 800; font-size: 12.5px; color: var(--ink-soft); width: 42px; text-align: right; }
+@media (max-width: 520px) { .st-tn { width: 96px; } }
 
 /* ─ Write It! (recall) ─────────────────────────────────────────────────── */
 .rc-emoji { font-size: 74px; line-height: 1; }

@@ -54,6 +54,7 @@
         <span class="chip" title="Day streak"><span class="big">🔥</span> <span id="hud-streak">0</span></span>
         <span class="chip" title="Total stars"><span class="big">⭐</span> <span id="hud-stars">0</span></span>
         <button class="chip sound-toggle" id="sound-toggle" type="button" title="Music & sound on/off" aria-label="Music and sound on or off"><span class="big" id="sound-ico">🔊</span></button>
+        <button class="chip sound-toggle" id="stats-btn" type="button" title="Progress" aria-label="Progress"><span class="big">📊</span></button>
       </div>
 
       <div class="mascot-row">
@@ -66,36 +67,41 @@
       <h2 class="section-title">Pick a topic 🎯</h2>
       <div class="cat-grid" id="cat-grid"><!-- categories injected --></div>
 
-      <div class="tile" id="sentence-tile" role="button">
-        <span class="t-emoji">🧩</span>
-        <div>
-          <div class="t-name">Sentence Builder</div>
-          <div class="t-sub">Put the words in order!</div>
+      <h2 class="section-title">More practice 🎮</h2>
+      <div class="extras">
+        <div class="tile tile-sentence" id="sentence-tile" role="button">
+          <span class="t-emoji">🧩</span>
+          <div><div class="t-name">Sentence Builder</div><div class="t-sub">Put words in order</div></div>
         </div>
-        <span class="spacer"></span>
-        <span style="font-size:30px">➜</span>
+        <div class="tile tile-srs" id="srs-tile" role="button" hidden>
+          <span class="t-emoji">🧠</span>
+          <div><div class="t-name">Memory Check</div><div class="t-sub" id="srs-sub">ready to review</div></div>
+        </div>
+        <div class="tile tile-pattern" id="pattern-tile" role="button">
+          <span class="t-emoji">🗣️</span>
+          <div><div class="t-name">Pattern Drill</div><div class="t-sub">Sentence frames</div></div>
+        </div>
+        <div class="tile tile-tone" id="tone-tile" role="button">
+          <span class="t-emoji">🎵</span>
+          <div><div class="t-name">Tone Trainer</div><div class="t-sub">Hear the pitch</div></div>
+        </div>
+        <div class="tile tile-hear" id="hear-tile" role="button">
+          <span class="t-emoji">👂</span>
+          <div><div class="t-name">Listen &amp; Understand</div><div class="t-sub">Whole sentences</div></div>
+        </div>
       </div>
 
-      <div class="tile tile-srs" id="srs-tile" role="button" hidden>
-        <span class="t-emoji">🧠</span>
-        <div>
-          <div class="t-name">Memory Check</div>
-          <div class="t-sub" id="srs-sub">words ready to review</div>
-        </div>
-        <span class="spacer"></span>
-        <span style="font-size:30px">➜</span>
-      </div>
+      <div style="height:20px"></div>
+    </section>
 
-      <div class="tile tile-pattern" id="pattern-tile" role="button">
-        <span class="t-emoji">🗣️</span>
-        <div>
-          <div class="t-name">Pattern Drill</div>
-          <div class="t-sub">Learn the sentence frames!</div>
-        </div>
-        <span class="spacer"></span>
-        <span style="font-size:30px">➜</span>
+    <!-- PROGRESS (for the parent) ---------------------------------------- -->
+    <section id="screen-stats" class="screen">
+      <div class="game-top">
+        <button class="icon-btn" data-nav="home">⬅️</button>
+        <div class="progress-dots"><span style="font-weight:900;font-size:22px">📊 Progress</span></div>
+        <span style="width:64px"></span>
       </div>
-
+      <div class="stats-body" id="stats-body"></div>
       <div style="height:20px"></div>
     </section>
 

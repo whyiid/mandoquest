@@ -112,7 +112,7 @@ const createSpeechGuard = window.MandoSpeech.createSingleUseGuard;
 
 /* ── Persistent state ────────────────────────────────────────────────── */
 const SAVE_KEY = 'mandoquest.v1';
-const DEFAULT_STATE = { progress: {}, streak: { count: 0, last: '' }, sentence: { best: 0 }, patterns: {}, unlockSeen: [], gateV2: false, quest: null, srs: {} };
+const DEFAULT_STATE = { progress: {}, streak: { count: 0, last: '' }, sentence: { best: 0 }, patterns: {}, unlockSeen: [], gateV2: false, quest: null, srs: {}, tones: { best: 0 }, hear: { best: 0 } };
 let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
 function load() {
   try {
@@ -222,6 +222,8 @@ function totalStars() {
   let s = state.sentence.best || 0;
   for (const id in state.progress) { const st = state.progress[id].stars || {}; for (const k in st) s += st[k]; }
   for (const id in (state.patterns || {})) s += state.patterns[id] || 0;
+  s += (state.tones && state.tones.best) || 0;
+  s += (state.hear && state.hear.best) || 0;
   return s;
 }
 
@@ -1027,6 +1029,203 @@ function modeRecall(catId) {
 }
 
 /* ===========================================================================
+   TONE TRAINER — the gap 327 words could not fill
+   Mandarin is tonal: 九 jiǔ is nine and 旧 jiù is old, same sound, different
+   word. Nothing in the app tested this — Write It! even accepts pinyin without
+   tone marks, because typing ǎ on a phone is a keyboard problem. So tones had
+   to get their own drill. Two kinds of question, both from existing audio:
+   hear a syllable and name its tone, or hear one of a real minimal pair and say
+   which word it was.
+   =========================================================================== */
+const TONE_MARKS = { 1: 'āēīōūǖ', 2: 'áéíóúǘ', 3: 'ǎěǐǒǔǚ', 4: 'àèìòùǜ' };
+const TONE_INFO = {
+  1: { sign: 'ˉ', sample: 'mā', name: 'Flat & high' },
+  2: { sign: 'ˊ', sample: 'má', name: 'Rising' },
+  3: { sign: 'ˇ', sample: 'mǎ', name: 'Dips down' },
+  4: { sign: 'ˋ', sample: 'mà', name: 'Falling' }
+};
+function syllableTone(sy) {
+  for (const t of [1, 2, 3, 4]) {
+    for (const ch of String(sy)) if (TONE_MARKS[t].indexOf(ch) !== -1) return t;
+  }
+  return 0;                                  // neutral / unmarked
+}
+function openWords() {
+  const out = [];
+  MANDO_DATA.categories.forEach((c, i) => { if (isUnlocked(i)) c.words.forEach(w => out.push(w)); });
+  return out;
+}
+// Real confusables already sitting in the vocabulary: same syllables, different
+// tones, different meaning. Built from the data, not hand-listed, so new topics
+// contribute automatically.
+function minimalPairs() {
+  const g = {}, out = [];
+  openWords().forEach(w => {
+    const k = normPinyin(w.pinyin);
+    (g[k] = g[k] || []).push(w);
+  });
+  Object.keys(g).forEach(k => {
+    const uniq = [];
+    // a usable pair must differ in all three: tone, character and meaning.
+    // Several words appear in two topics (书 in School and Classroom) and some
+    // share an English gloss (星星/星形 are both "Star") — neither is a real test.
+    g[k].forEach(w => {
+      if (!uniq.some(u => u.pinyin === w.pinyin || u.hanzi === w.hanzi || u.en === w.en)) uniq.push(w);
+    });
+    if (uniq.length >= 2) out.push(uniq.slice(0, 2));
+  });
+  return out;
+}
+
+function modeTones() {
+  currentGame = { catId: null, replay: () => { showScreen('screen-game'); modeTones(); } };
+  const singles = openWords().filter(w => w.pinyin.trim().split(/\s+/).length === 1 && syllableTone(w.pinyin));
+  const pairs = minimalPairs();
+  const qs = [];
+  sample(singles, Math.min(4, singles.length)).forEach(w => qs.push({ kind: 'id', w }));
+  sample(pairs, Math.min(2, pairs.length)).forEach(p => qs.push({ kind: 'pair', pair: shuffle(p) }));
+  const list = shuffle(qs);
+  // A brand-new player has one topic open and almost nothing to drill; finishing
+  // a zero-question round would hand out a 0-star result for no reason.
+  if (list.length < 2) { toast('🎵 Open a few more topics first!'); goHome(); return; }
+  let i = 0, correct = 0;
+
+  function show() {
+    if (i >= list.length) { finishTones(correct, list.length); return; }
+    const q = list[i];
+    setDots(list.length, i);
+    $('#game-score').textContent = correct;
+
+    if (q.kind === 'id') {
+      const w = q.w, ans = syllableTone(w.pinyin);
+      gameRender(
+        '<div class="prompt-card"><div class="tn-hanzi">' + w.hanzi + '</div>' +
+          '<button class="btn lg" id="tn-play" style="margin-top:10px">🔊 Listen</button></div>' +
+        '<div class="tn-ask">Which tone is it?</div>' +
+        '<div class="options cols-2" id="tn-opts"></div>',
+        'Listen to the pitch! 🎵');
+      const og = $('#tn-opts'); let done = false;
+      [1, 2, 3, 4].forEach(t => {
+        const info = TONE_INFO[t];
+        const c = el('div', 'opt tn-opt',
+          '<div class="tn-sign">' + info.sign + '</div><div class="tn-num">Tone ' + t + '</div>' +
+          '<div class="tn-name">' + info.name + ' · ' + info.sample + '</div>');
+        c.onclick = () => {
+          if (done) return; done = true;
+          const ok = t === ans;
+          if (ok) { c.classList.add('correct'); correct++; sfx('correct'); reactGame('happy', pick(MANDO_DATA.phrases.correct)); }
+          else {
+            c.classList.add('wrong'); sfx('wrong'); reactGame('sad', pick(MANDO_DATA.phrases.wrong));
+            $$('#tn-opts .opt').forEach((x, idx) => { if (idx + 1 === ans) x.classList.add('correct'); });
+          }
+          recordWord(null, w.hanzi, ok);
+          $('.tn-ask').innerHTML = (ok ? '✅ ' : '❌ ') + '<b>' + w.hanzi + '</b> · ' + w.pinyin + ' · ' + w.en;
+          speak(w.hanzi);
+          setTimeout(() => { i++; show(); }, ok ? 1500 : 2400);
+        };
+        og.appendChild(c);
+      });
+      $('#tn-play').onclick = () => speak(w.hanzi);
+      speak(w.hanzi);
+
+    } else {
+      const [a, b] = q.pair, target = pick(q.pair);
+      gameRender(
+        '<div class="prompt-card"><div style="font-size:60px">👂</div>' +
+          '<button class="btn lg" id="tn-play" style="margin-top:8px">🔊 Listen</button></div>' +
+        '<div class="tn-ask">Same sound, different tone — which one?</div>' +
+        '<div class="options cols-2" id="tn-opts"></div>',
+        'Tones change the word! 🎵');
+      const og = $('#tn-opts'); let done = false;
+      [a, b].forEach(w => {
+        const c = el('div', 'opt tn-opt',
+          '<div class="tn-hz">' + w.hanzi + '</div><div class="tn-py">' + w.pinyin + '</div>' +
+          '<div class="tn-name">' + w.en + '</div>');
+        c.onclick = () => {
+          if (done) return; done = true;
+          const ok = w.hanzi === target.hanzi;
+          if (ok) { c.classList.add('correct'); correct++; sfx('correct'); reactGame('happy', pick(MANDO_DATA.phrases.correct)); }
+          else {
+            c.classList.add('wrong'); sfx('wrong'); reactGame('sad', pick(MANDO_DATA.phrases.wrong));
+            $$('#tn-opts .opt').forEach(x => { if (x.textContent.indexOf(target.hanzi) === 0) x.classList.add('correct'); });
+          }
+          recordWord(null, target.hanzi, ok);
+          $('.tn-ask').innerHTML = (ok ? '✅ ' : '❌ ') + 'It was <b>' + target.hanzi + '</b> · ' + target.pinyin + ' · ' + target.en;
+          speak(target.hanzi);
+          setTimeout(() => { i++; show(); }, ok ? 1500 : 2600);
+        };
+        og.appendChild(c);
+      });
+      $('#tn-play').onclick = () => speak(target.hanzi);
+      speak(target.hanzi);
+    }
+  }
+  show();
+}
+function finishTones(correct, total) {
+  const stars = computeStars(correct, total);
+  if (!state.tones) state.tones = { best: 0 };
+  state.tones.best = Math.max(state.tones.best || 0, stars);
+  if (stars >= 1) questComplete('tones');
+  bumpStreak(); save();
+  showResult(stars, correct * 15, correct, total, 'Tone Master! 🎵', null);
+}
+
+/* ===========================================================================
+   LISTEN TO SENTENCES — comprehension, not just word recognition
+   Listen & Choose only ever sampled cat.words, so listening stopped at single
+   words even though all 68 sentences already have their own recorded clip.
+   =========================================================================== */
+function modeHearSentence() {
+  currentGame = { catId: null, replay: () => { showScreen('screen-game'); modeHearSentence(); } };
+  const qs = sample(MANDO_DATA.sentences, Math.min(5, MANDO_DATA.sentences.length));
+  let i = 0, correct = 0;
+
+  function show() {
+    if (i >= qs.length) { finishHear(correct, qs.length); return; }
+    const s = qs[i];
+    const opts = shuffle([s].concat(sample(MANDO_DATA.sentences.filter(x => x.en !== s.en), 3)));
+    setDots(qs.length, i);
+    $('#game-score').textContent = correct;
+    gameRender(
+      '<div class="prompt-card"><div style="font-size:60px">👂</div>' +
+        '<button class="btn lg" id="hs-play" style="margin-top:8px">🔊 Listen</button></div>' +
+      '<div class="tn-ask">What did you hear?</div>' +
+      '<div class="options" id="hs-opts"></div>',
+      'Listen to the whole sentence! 👂');
+
+    const og = $('#hs-opts'); let done = false;
+    opts.forEach(o => {
+      const c = el('div', 'opt hs-opt', o.en);
+      c.onclick = () => {
+        if (done) return; done = true;
+        const ok = o.en === s.en;
+        if (ok) { c.classList.add('correct'); correct++; sfx('correct'); reactGame('happy', pick(MANDO_DATA.phrases.correct)); }
+        else {
+          c.classList.add('wrong'); sfx('wrong'); reactGame('sad', pick(MANDO_DATA.phrases.wrong));
+          $$('#hs-opts .opt').forEach(x => { if (x.textContent === s.en) x.classList.add('correct'); });
+        }
+        $('.tn-ask').innerHTML = '<b>' + s.tokens.join('') + '</b> · ' + s.pinyin;
+        speak(s.tokens.join(''));
+        setTimeout(() => { i++; show(); }, ok ? 1600 : 2600);
+      };
+      og.appendChild(c);
+    });
+    $('#hs-play').onclick = () => speak(s.tokens.join(''));
+    speak(s.tokens.join(''));
+  }
+  show();
+}
+function finishHear(correct, total) {
+  const stars = computeStars(correct, total);
+  if (!state.hear) state.hear = { best: 0 };
+  state.hear.best = Math.max(state.hear.best || 0, stars);
+  if (stars >= 1) questComplete('hear');
+  bumpStreak(); save();
+  showResult(stars, correct * 15, correct, total, 'Good ears! 👂', null);
+}
+
+/* ===========================================================================
    Daily Quest — three jobs a day, drawn from what Matthew has actually reached
    Free play lets him replay the same easy topic forever and never meet old
    vocabulary again. The quest forces the spread: one topic he already beat (so
@@ -1051,7 +1250,9 @@ function questRng(seed) {
 const QUEST_EXTRAS = {
   pattern:  { icon: '🗣️', title: 'Pattern Drill',    sub: 'Learn a sentence frame' },
   sentence: { icon: '🧩', title: 'Sentence Builder', sub: 'Put the words in order' },
-  galaxy:   { icon: '🌌', title: 'Galaxy Mix',       sub: 'Words from every topic' }
+  galaxy:   { icon: '🌌', title: 'Galaxy Mix',       sub: 'Words from every topic' },
+  tones:    { icon: '🎵', title: 'Tone Trainer',     sub: 'Hear the pitch' },
+  hear:     { icon: '👂', title: 'Listen & Understand', sub: 'Whole sentences' }
 };
 function buildQuest() {
   const today = todayStr();
@@ -1087,7 +1288,7 @@ function buildQuest() {
   }
 
   // 3 — produce, not just recognise
-  const extras = ['pattern', 'sentence'].concat(unlocked.length >= 3 ? ['galaxy'] : []);
+  const extras = ['pattern', 'sentence', 'tones', 'hear'].concat(unlocked.length >= 3 ? ['galaxy'] : []);
   const ek = one(extras);
   tasks.push(Object.assign({ key: ek }, QUEST_EXTRAS[ek]));
 
@@ -1112,6 +1313,8 @@ function runQuestTask(key) {
   if (key === 'sentence') { showScreen('screen-game'); modeSentence(); return; }
   if (key === 'galaxy')   { launchGalaxy(); return; }
   if (key === 'srs')      { launchSrs(); return; }
+  if (key === 'tones')    { showScreen('screen-game'); modeTones(); return; }
+  if (key === 'hear')     { showScreen('screen-game'); modeHearSentence(); return; }
   const p = key.split(':');
   launch(p[2], p[1]);
 }
@@ -1139,6 +1342,68 @@ function renderQuest() {
   });
 }
 
+/* ===========================================================================
+   PROGRESS — for the parent, not the player
+   The app knew exactly which words Matthew keeps missing and never showed any
+   of it, so the only way to find out was to ask someone to read the save file.
+   Everything here comes from data already stored; nothing new is tracked.
+   =========================================================================== */
+function renderStats() {
+  const cats = MANDO_DATA.categories;
+  const open = cats.filter((_, i) => isUnlocked(i));
+  const beaten = open.filter(c => categoryStars(c.id) >= starsToUnlock());
+  const srs = state.srs || {};
+  const met = Object.keys(srs).length;
+  const due = dueWords().length;
+  const solid = Object.keys(srs).filter(h => (srs[h].n || 0) >= 4).length;
+
+  // the actually useful bit: what he keeps getting wrong
+  const weak = Object.keys(srs)
+    .map(h => ({ hanzi: h, miss: srs[h].miss || 0, n: srs[h].n || 0 }))
+    .filter(x => x.miss > 0)
+    .sort((a, b) => b.miss - a.miss || a.n - b.n)
+    .slice(0, 10)
+    .map(x => {
+      const w = MANDO_DATA.allWords.find(v => v.hanzi === x.hanzi);
+      return Object.assign(x, { pinyin: w ? w.pinyin : '', en: w ? w.en : '', emoji: w ? w.emoji : '' });
+    });
+
+  const card = (big, label) =>
+    '<div class="st-cell"><div class="st-big">' + big + '</div><div class="st-lbl">' + label + '</div></div>';
+
+  $('#stats-body').innerHTML =
+    '<div class="st-grid">' +
+      card(state.streak.count || 0, 'day streak 🔥') +
+      card(totalStars(), 'stars ⭐') +
+      card(beaten.length + '/' + cats.length, 'topics mastered') +
+      card(met, 'words met') +
+      card(solid, 'words solid 💪') +
+      card(due, 'due to review 🧠') +
+    '</div>' +
+
+    '<h3 class="st-h">Words he keeps missing</h3>' +
+    (weak.length
+      ? '<div class="st-weak">' + weak.map(x =>
+          '<div class="st-word"><span class="st-emoji">' + (x.emoji || '📝') + '</span>' +
+          '<div><div class="st-hz">' + x.hanzi + ' <span class="st-py">' + x.pinyin + '</span></div>' +
+          '<div class="st-en">' + x.en + '</div></div>' +
+          '<span class="spacer"></span><span class="st-miss">' + x.miss + '×</span></div>').join('') +
+        '</div>'
+      : '<div class="st-empty">Nothing missed yet — either he is flying, or he has not played enough for this to mean anything.</div>') +
+
+    '<h3 class="st-h">Every topic</h3>' +
+    '<div class="st-topics">' + cats.map((c, i) => {
+      const s = categoryStars(c.id), pct = Math.round(s / maxStars() * 100);
+      const lock = !isUnlocked(i);
+      return '<div class="st-topic' + (lock ? ' locked' : '') + '">' +
+        '<span class="st-ic">' + (lock ? '🔒' : c.icon) + '</span>' +
+        '<div class="st-tn">' + c.name + '</div>' +
+        '<div class="st-bar"><div class="st-fill" style="width:' + pct + '%;background:' + c.color + '"></div></div>' +
+        '<span class="st-num">' + s + '/' + maxStars() + '</span></div>';
+    }).join('') + '</div>';
+}
+function goStats() { renderStats(); showScreen('screen-stats'); }
+
 /* ── Init ────────────────────────────────────────────────────────────── */
 function init() {
   load();
@@ -1150,6 +1415,12 @@ function init() {
   $('#sentence-tile').onclick = () => { showScreen('screen-game'); modeSentence(); };
   const patTile = $('#pattern-tile');
   if (patTile) patTile.onclick = () => { showScreen('screen-game'); modePattern(); };
+  const toneTile = $('#tone-tile');
+  if (toneTile) toneTile.onclick = () => { showScreen('screen-game'); modeTones(); };
+  const hearTile = $('#hear-tile');
+  if (hearTile) hearTile.onclick = () => { showScreen('screen-game'); modeHearSentence(); };
+  const statsBtn = $('#stats-btn');
+  if (statsBtn) statsBtn.onclick = goStats;
 
   // music & sound toggle (does NOT affect Mandarin pronunciation)
   const soundBtn = $('#sound-toggle');
