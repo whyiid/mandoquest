@@ -117,7 +117,7 @@ const weakSrsEntries = window.MandoLearning.weakSrsEntries;
 /* ── Persistent state ────────────────────────────────────────────────── */
 // Bumped with the service-worker CACHE version. Shown on the Progress screen so
 // "am I actually on the new build?" can be answered by looking, not by asking.
-const APP_BUILD = 'v31';
+const APP_BUILD = 'v32';
 const SAVE_KEY = 'mandoquest.v1';
 const DEFAULT_STATE = { progress: {}, streak: { count: 0, last: '' }, sentence: { best: 0 }, patterns: {}, unlockSeen: [], gateV2: false, quest: null, srs: {}, tones: { best: 0 }, hear: { best: 0 } };
 let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -1398,6 +1398,9 @@ function renderStats() {
     '<div class="st-cell"><div class="st-big">' + big + '</div><div class="st-lbl">' + label + '</div></div>';
 
   $('#stats-body').innerHTML =
+    // Top of the screen, not buried mid-page: the only job of this line is to
+    // answer "is this phone actually on the new build?" at a glance.
+    '<div class="st-build">📱 MandoQuest <b>' + APP_BUILD + '</b></div>' +
     '<div class="st-grid">' +
       card(state.streak.count || 0, 'day streak 🔥') +
       card(totalStars(), 'stars ⭐') +
@@ -1416,8 +1419,6 @@ function renderStats() {
           '<span class="spacer"></span><span class="st-miss">' + x.miss + '×</span></div>').join('') +
         '</div>'
       : '<div class="st-empty">Nothing missed yet — either he is flying, or he has not played enough for this to mean anything.</div>') +
-
-    '<div class="st-build">MandoQuest ' + APP_BUILD + '</div>' +
 
     '<h3 class="st-h">Every topic</h3>' +
     '<div class="st-topics">' + cats.map((c, i) => {
