@@ -113,11 +113,14 @@ const createSpeechGuard = window.MandoSpeech.createSingleUseGuard;
 const createTapCooldown = window.MandoSpeech.createTapCooldown;
 const updateSrsEntry = window.MandoLearning.updateSrsEntry;
 const weakSrsEntries = window.MandoLearning.weakSrsEntries;
+const isWeakWord = window.MandoLearning.isWeakWord;
+const masteryFor = window.MandoLearning.masteryFor;
+const rankFor = window.MandoLearning.rankFor;
 
 /* ── Persistent state ────────────────────────────────────────────────── */
 // Bumped with the service-worker CACHE version. Shown on the Progress screen so
 // "am I actually on the new build?" can be answered by looking, not by asking.
-const APP_BUILD = 'v32';
+const APP_BUILD = 'v34';
 const SAVE_KEY = 'mandoquest.v1';
 const DEFAULT_STATE = { progress: {}, streak: { count: 0, last: '' }, sentence: { best: 0 }, patterns: {}, unlockSeen: [], gateV2: false, quest: null, srs: {}, tones: { best: 0 }, hear: { best: 0 } };
 let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -324,13 +327,27 @@ function renderHome() {
   mountDragon($('#home-dragon'));
   $('#home-speech').textContent = pick(MANDO_DATA.phrases.idle);
 
+  const rank = playerRank(), toNext = starsToNextRank();
+  const rb = $('#home-rank');
+  if (rb) {
+    rb.innerHTML =
+      '<span class="r-badge">' + rank.badge + '</span>' +
+      '<div class="r-text"><div class="r-name">' + rank.name + '</div>' +
+      '<div class="r-sub">' + (toNext == null
+        ? 'Top rank reached! 👑'
+        : toNext + ' ⭐ to ' + RANKS[rankIndex() + 1].badge + ' ' + RANKS[rankIndex() + 1].name) +
+      '</div></div>';
+  }
+
   const grid = $('#cat-grid'); grid.innerHTML = '';
   MANDO_DATA.categories.forEach((c, idx) => {
     const m = categoryMastery(c.id), unlocked = isUnlocked(idx);
     const st = categoryStars(c.id);
+    const lvl = masteryOf(c.id);
     const card = el('div', 'cat-card' + (unlocked ? '' : ' locked'));
     card.innerHTML =
       '<span class="cc-icon">' + c.icon + '</span>' +
+      (unlocked ? '<span class="cc-mastery" title="' + lvl.label + '">' + lvl.badge + '</span>' : '') +
       '<span class="cc-name">' + c.name + '</span>' +
       '<div class="cc-bar"><div class="cc-fill" style="width:' + m + '%;background:' + c.color + '"></div></div>' +
       '<span class="cc-pct">' + st + '/' + maxStars() + ' ⭐</span>' +
@@ -340,6 +357,9 @@ function renderHome() {
     if (unlocked) card.onclick = () => goCategory(c.id);
     grid.appendChild(card);
   });
+
+  const hb = $('#home-build');
+  if (hb) hb.textContent = 'MandoQuest ' + APP_BUILD;
 
   // Memory Check tile — only when the schedule actually has something due
   const dueNow = dueWords().length;
@@ -374,10 +394,71 @@ function catTier(id) {
   return i < 4 ? 'easy' : i < 9 ? 'medium' : 'hard';
 }
 const TIER_BADGE = { easy: '🟢 Easy', medium: '🟡 Medium', hard: '🔴 Hard' };
-// item/option counts scale up with tier — more to track = harder.
-function tierN(id, easy, medium, hard) {
+
+/* ── player rank (global ramp) ───────────────────────────────────────────
+   Topic tier alone made the ramp a dead end: topic 1 stayed a 4-word round
+   forever, so a child who had beaten it thirty times still got the beginner
+   version. Rank is earned across the whole app, so the SAME topic gets harder
+   as he does — more items per round, more daily jobs, and a higher pass mark
+   than "finished it at all". */
+const RANKS = [
+  { min: 0,   badge: '🥚', name: 'Egg',          jobs: 3, need: 1, extra: 0 },
+  { min: 40,  badge: '🐣', name: 'Hatchling',    jobs: 3, need: 2, extra: 0 },
+  { min: 100, badge: '🐲', name: 'Young Dragon', jobs: 4, need: 2, extra: 1 },
+  { min: 180, badge: '🔥', name: 'Fire Dragon',  jobs: 4, need: 3, extra: 1 },
+  { min: 280, badge: '👑', name: 'Dragon Master',jobs: 5, need: 3, extra: 2 }
+];
+function playerRank() { return rankFor(totalStars(), RANKS); }
+function rankIndex() { return RANKS.indexOf(playerRank()); }
+// Stars still needed for the next rank — null once he is at the top.
+function starsToNextRank() {
+  const nxt = RANKS[rankIndex() + 1];
+  return nxt ? nxt.min - totalStars() : null;
+}
+// item/option counts scale up with tier — more to track = harder. The rank
+// bonus rides on top so a mastered topic keeps growing instead of stalling.
+// `cap` exists because the two knobs do not scale alike: more tiles to find is
+// a fair challenge, but a multiple-choice row past six options is just clutter
+// an eight-year-old has to scan, so callers that render choices cap the bonus.
+function tierN(id, easy, medium, hard, cap) {
   const t = catTier(id);
-  return t === 'easy' ? easy : t === 'medium' ? medium : hard;
+  const base = t === 'easy' ? easy : t === 'medium' ? medium : hard;
+  const n = base + playerRank().extra;
+  return cap != null ? Math.min(n, cap) : n;
+}
+
+/* ── mastery per topic (what is learned vs what is not) ──────────────────
+   The quest used to spread practice evenly, which meant a topic he had beaten
+   kept taking slots away from the one he keeps missing. Mastery answers "does
+   he actually know this?" from two independent signals: stars (can he play it
+   well) and the word schedule (does he still miss the words). A topic counts as
+   mastered only when BOTH agree, so a full star row with shaky words does not
+   buy its way out of review. */
+const MASTERY = [
+  { key: 'new',      badge: '⚪', label: 'Not started' },
+  { key: 'learning', badge: '🔴', label: 'Learning' },
+  { key: 'growing',  badge: '🟡', label: 'Getting there' },
+  { key: 'strong',   badge: '🟢', label: 'Strong' },
+  { key: 'mastered', badge: '💎', label: 'Mastered' }
+];
+// Words in a topic he has not yet proven: never seen, recently missed, or not
+// carried far enough through the schedule to have stuck.
+function weakWordsIn(catId) {
+  const cat = MANDO_DATA.getCategory(catId);
+  if (!cat) return [];
+  const srs = state.srs || {};
+  return cat.words.filter(w => isWeakWord(srs[w.hanzi]));
+}
+function masteryIndex(catId) {
+  const cat = MANDO_DATA.getCategory(catId);
+  const total = (cat && cat.words.length) || 0;
+  return masteryFor(categoryStars(catId), maxStars(), weakWordsIn(catId).length, total);
+}
+function masteryOf(catId) { return MASTERY[masteryIndex(catId)]; }
+// A mastered topic still resurfaces when the schedule says a word is slipping —
+// "don't repeat what he knows" must not become "let him forget it".
+function needsWork(catId) {
+  return masteryIndex(catId) < 4 || weakWordsIn(catId).length > 0;
 }
 // words from earlier (already-unlocked) topics — feed cumulative-review distractors.
 function earlierWords(id) {
@@ -566,7 +647,7 @@ function modeListen(catId) {
   function show() {
     if (i >= qs.length) { finishRound({ catId, mode: 'listen', correct, total: qs.length }); return; }
     const w = qs[i];
-    const opts = shuffle([w].concat(distractors(catId, w, tierN(catId, 3, 4, 5))));
+    const opts = shuffle([w].concat(distractors(catId, w, tierN(catId, 3, 4, 5, 5))));
     setDots(qs.length, i);
     $('#game-score').textContent = correct;
     gameRender(
@@ -848,7 +929,7 @@ function modeSentence() {
 }
 function finishSentence(correct, total) {
   const stars = computeStars(correct, total);
-  if (stars >= 1) questComplete('sentence');
+  questComplete('sentence', stars);
   bumpStreak(); state.sentence.best = Math.max(state.sentence.best || 0, stars);
   save(); refreshUnlocks(true);
   showResult(stars, correct * 15, correct, total, 'Sentence Master! 🧩', null);
@@ -866,7 +947,7 @@ function finishRound(o) {
   const stars = (o.stars != null) ? o.stars : computeStars(o.correct, o.total);
   const xp = (o.xp != null) ? o.xp : o.correct * 10;
   if (o.catId) { ensureCat(o.catId); addXp(o.catId, xp); setBest(o.catId, o.mode, stars); }
-  if (stars >= 1) questComplete(o.catId === '_galaxy' ? 'galaxy' : o.catId === '_srs' ? 'srs' : 'mode:' + o.catId + ':' + o.mode);
+  questComplete(o.catId === '_galaxy' ? 'galaxy' : o.catId === '_srs' ? 'srs' : 'mode:' + o.catId + ':' + o.mode, stars);
   bumpStreak(); save(); refreshUnlocks(true);
   showResult(stars, xp, o.correct, o.total, o.winText, o.catId || null);
 }
@@ -965,7 +1046,7 @@ function finishPattern(p, correct, total) {
   const stars = computeStars(correct, total);
   if (!state.patterns) state.patterns = {};
   if (stars > (state.patterns[p.id] || 0)) state.patterns[p.id] = stars;
-  if (stars >= 1) questComplete('pattern');
+  questComplete('pattern', stars);
   bumpStreak(); save();
   showResult(stars, correct * 15, correct, total, 'Pattern: ' + p.title + ' 🧩', null);
 }
@@ -984,6 +1065,15 @@ const compactToned = window.MandoSpeech.compactToned;
 function pinyinHint(pinyin) {
   return String(pinyin).split(/\s+/).map(sy => sy.charAt(0) + '·'.repeat(Math.max(1, sy.length - 1))).join(' ');
 }
+// Only two words in the whole vocabulary use ü (绿色, 女孩), and nothing told
+// the child that "v" is how you type it. Say so on exactly those questions
+// rather than carrying the rule on every screen.
+function recallTip(w) {
+  return /[üǖǘǚǜ]/.test(w.pinyin)
+    ? 'type <b>v</b> for ü, tone as a number: <b>lv4</b> → <b>lǜ</b>'
+    : 'type the tone as a number: <b>hao3</b> → <b>hǎo</b>';
+}
+
 function modeRecall(catId) {
   currentGame = { catId, replay: () => { showScreen('screen-game'); modeRecall(catId); } };
   const cat = MANDO_DATA.getCategory(catId);
@@ -1001,8 +1091,7 @@ function modeRecall(catId) {
       '<div class="rc-box">' +
         '<input class="rc-input" id="rc-in" type="text" autocomplete="off" autocorrect="off" ' +
           'autocapitalize="none" spellcheck="false" placeholder="hao3">' +
-        '<div class="rc-live" id="rc-live"><span class="rc-tip">type the tone as a number: ' +
-          '<b>hao3</b> → <b>hǎo</b></span></div>' +
+        '<div class="rc-live" id="rc-live"><span class="rc-tip">' + recallTip(w) + '</span></div>' +
         '<div class="rc-row"><button class="btn ghost" id="rc-hint">💡 Hint</button>' +
         '<button class="btn" id="rc-go">Check ✓</button></div>' +
         '<div class="feedback-line" id="rc-fb"></div>' +
@@ -1046,7 +1135,7 @@ function modeRecall(catId) {
       const shown = pinyinFromNumbers(inp.value);
       live.innerHTML = shown
         ? '<span class="rc-shown">' + shown + '</span>'
-        : '<span class="rc-tip">type the tone as a number: <b>hao3</b> → <b>hǎo</b></span>';
+        : '<span class="rc-tip">' + recallTip(w) + '</span>';
     });
     $('#rc-hint').onclick = () => {
       if (answered) return;
@@ -1195,7 +1284,7 @@ function finishTones(correct, total) {
   const stars = computeStars(correct, total);
   if (!state.tones) state.tones = { best: 0 };
   state.tones.best = Math.max(state.tones.best || 0, stars);
-  if (stars >= 1) questComplete('tones');
+  questComplete('tones', stars);
   bumpStreak(); save();
   showResult(stars, correct * 15, correct, total, 'Tone Master! 🎵', null);
 }
@@ -1249,7 +1338,7 @@ function finishHear(correct, total) {
   const stars = computeStars(correct, total);
   if (!state.hear) state.hear = { best: 0 };
   state.hear.best = Math.max(state.hear.best || 0, stars);
-  if (stars >= 1) questComplete('hear');
+  questComplete('hear', stars);
   bumpStreak(); save();
   showResult(stars, correct * 15, correct, total, 'Good ears! 👂', null);
 }
@@ -1283,55 +1372,94 @@ const QUEST_EXTRAS = {
   tones:    { icon: '🎵', title: 'Tone Trainer',     sub: 'Hear the pitch' },
   hear:     { icon: '👂', title: 'Listen & Understand', sub: 'Whole sentences' }
 };
+// Weakest mode first — the gap closes where the stars are thinnest. Ties are
+// the normal case (a fresh topic scores 0 everywhere, a strong one scores 3
+// everywhere), and breaking them by list order handed every slot to the first
+// mode, so the whole day became one game played three times. The day's seed
+// breaks ties instead: still identical all day, different tomorrow.
+function weakestModes(catId, rnd) {
+  return MODES.map(m => ({ m, s: getBest(catId, m.key), j: rnd() }))
+    .sort((a, b) => a.s - b.s || a.j - b.j)
+    .map(x => x.m);
+}
+// Every unlocked topic that still owes work, hardest-first. `needsWork` already
+// keeps a mastered topic in the list while any of its words are slipping, so
+// this is the single place that decides what the day is allowed to ask for.
+function topicsNeedingWork() {
+  return MANDO_DATA.categories
+    .filter((_, i) => isUnlocked(i))
+    .filter(c => needsWork(c.id))
+    .map(c => ({ cat: c, m: masteryIndex(c.id), weak: weakWordsIn(c.id).length }))
+    .sort((a, b) => a.m - b.m || b.weak - a.weak);
+}
 function buildQuest() {
   const today = todayStr();
   if (state.quest && state.quest.date === today) return state.quest;
 
   const rnd = questRng(questSeed(today));
   const one = a => a[Math.floor(rnd() * a.length)];
+  const rank = playerRank();
   const unlocked = MANDO_DATA.categories.filter((_, i) => isUnlocked(i));
-  const beaten = unlocked.filter(c => categoryStars(c.id) >= starsToUnlock());
-  const working = unlocked.find(c => categoryStars(c.id) < starsToUnlock()) || unlocked[unlocked.length - 1];
+  const weakTopics = topicsNeedingWork();
   const tasks = [];
+  const add = t => { if (!tasks.some(x => x.key === t.key)) tasks.push(t); };
 
-  // 1 — retrieve. Once enough words are due, the schedule knows better than a
-  // shuffle which ones are about to be forgotten, so it takes this slot.
+  // 1 — words actually slipping. The schedule knows which ones are about to go,
+  // so it outranks any topic-level guess.
   const due = dueWords();
   if (due.length >= 6) {
-    tasks.push({ key: 'srs', icon: '🧠', title: 'Memory Check', sub: due.length + ' words due today' });
-  } else {
-    const rc = beaten.length ? one(beaten) : one(unlocked);
-    const rm = one(MODES);
-    tasks.push({ key: 'mode:' + rc.id + ':' + rm.key, icon: '🔁', title: 'Review: ' + rc.name, sub: rm.name });
+    add({ key: 'srs', icon: '🧠', title: 'Memory Check', sub: due.length + ' words due today' });
   }
 
-  // 2 — the topic in progress, aimed at its weakest mode so the gap closes
-  let weak = MODES[0];
-  MODES.forEach(mo => { if (getBest(working.id, mo.key) < getBest(working.id, weak.key)) weak = mo; });
-  const k2 = 'mode:' + working.id + ':' + weak.key;
-  if (!tasks.some(t => t.key === k2)) {
-    tasks.push({ key: k2, icon: '🎯', title: 'Practice: ' + working.name, sub: weak.name });
-  } else {                                   // same topic AND mode as the review — take another mode
-    const alt = one(MODES.filter(m => m.key !== weak.key));
-    tasks.push({ key: 'mode:' + working.id + ':' + alt.key, icon: '🎯', title: 'Practice: ' + working.name, sub: alt.name });
-  }
+  // 2 — the unmastered topics themselves, weakest first, each aimed at the mode
+  // it scores worst in. This is the bulk of the day: what he cannot do yet gets
+  // the slots, and a topic that is genuinely finished never appears at all.
+  const usedModes = [];
+  weakTopics.forEach(t => {
+    if (tasks.length >= rank.jobs) return;
+    const modes = weakestModes(t.cat.id, rnd);
+    // Prefer a game he has not already been given today. Only when every mode is
+    // spoken for does a repeat become acceptable — variety matters, but not more
+    // than aiming each round at the mode the topic is actually weakest in.
+    const mo = modes.find(m => usedModes.indexOf(m.key) === -1) || modes[0];
+    usedModes.push(mo.key);
+    add({
+      key: 'mode:' + t.cat.id + ':' + mo.key,
+      icon: MASTERY[t.m].badge,
+      title: (t.m === 0 ? 'Start: ' : t.m >= 3 ? 'Polish: ' : 'Practice: ') + t.cat.name,
+      sub: mo.name + (t.weak ? ' · ' + t.weak + ' words to fix' : '')
+    });
+  });
 
-  // 3 — produce, not just recognise
+  // 3 — producing rounds, not just recognition. These only fill slots the weak
+  // topics did not need, so on a day with plenty to fix they never appear; when
+  // everything is mastered they are what keeps the day from being empty.
   const extras = ['pattern', 'sentence', 'tones', 'hear'].concat(unlocked.length >= 3 ? ['galaxy'] : []);
-  const ek = one(extras);
-  tasks.push(Object.assign({ key: ek }, QUEST_EXTRAS[ek]));
+  while (tasks.length < rank.jobs) {
+    const left = extras.filter(k => !tasks.some(x => x.key === k));
+    if (!left.length) break;
+    const k = one(left);
+    add(Object.assign({ key: k }, QUEST_EXTRAS[k]));
+  }
 
-  state.quest = { date: today, tasks, done: [] };
+  state.quest = { date: today, tasks, done: [], need: rank.need };
   save();
   return state.quest;
 }
 // A task only counts when the round is actually passed (>= 1 star), so the
 // quest cannot be cleared by losing three times.
-function questComplete(key) {
+function questComplete(key, stars) {
   const q = state.quest;
   if (!q || q.date !== todayStr()) return;
   if (!q.done) q.done = [];
   if (!q.tasks.some(t => t.key === key) || q.done.indexOf(key) !== -1) return;
+  // The pass mark rises with rank. At first finishing the round is the job; later
+  // the job is playing it well, so the same quest keeps asking for more.
+  const need = q.need || 1;
+  if (stars < need) {
+    toast('⭐'.repeat(need) + ' needed for the quest — you got ' + stars + '. Try again!');
+    return;
+  }
   q.done.push(key);
   save();
   if (q.done.length === q.tasks.length) { sfx('unlock'); toast('🏆 Daily Quest complete! Amazing, Matthew!'); }
@@ -1352,11 +1480,13 @@ function renderQuest() {
   if (!host) return;
   const q = buildQuest(), done = q.done || [];
   const all = done.length === q.tasks.length;
+  const need = q.need || 1;
   host.className = 'quest-card' + (all ? ' all-done' : '');
   host.innerHTML =
     '<div class="q-head"><span class="q-emoji">' + (all ? '🏆' : '📅') + '</span>' +
       '<div><div class="q-title">' + (all ? 'All done today!' : "Today's Quest") + '</div>' +
-      '<div class="q-sub">' + done.length + ' of ' + q.tasks.length + ' finished</div></div></div>' +
+      '<div class="q-sub">' + done.length + ' of ' + q.tasks.length + ' finished · needs ' +
+        '⭐'.repeat(need) + ' each</div></div></div>' +
     '<div class="q-list">' + q.tasks.map(t => {
       const ok = done.indexOf(t.key) !== -1;
       return '<div class="q-task' + (ok ? ' ok' : '') + '" data-qkey="' + t.key + '">' +

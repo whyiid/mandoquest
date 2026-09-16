@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { updateSrsEntry, weakSrsEntries } = require('../learning.js');
+const { updateSrsEntry, weakSrsEntries, isWeakWord, masteryFor, rankFor } = require('../learning.js');
 
 const steps = [1, 2, 4, 8, 16, 32];
 const addDays = (date, days) => {
@@ -60,4 +60,43 @@ test('parent weak list excludes words whose latest result was correct', () => {
   });
 
   assert.deepEqual(entries.map(x => x.hanzi), ['谢谢', '再见']);
+});
+
+/* ── mastery: what the daily quest is allowed to skip ──────────────────── */
+
+test('a word is weak until the schedule has carried it past one success', () => {
+  assert.equal(isWeakWord(undefined), true, 'never seen');
+  assert.equal(isWeakWord({ n: 3, miss: 1, lastOk: true }), true, 'recently missed');
+  assert.equal(isWeakWord({ n: 3, miss: 0, lastOk: false }), true, 'last answer wrong');
+  assert.equal(isWeakWord({ n: 1, miss: 0, lastOk: true }), true, 'only one success deep');
+  assert.equal(isWeakWord({ n: 2, miss: 0, lastOk: true }), false, 'proven');
+});
+
+test('full stars do not count as mastered while the words are still shaky', () => {
+  // The whole point of two signals: he can play the topic well, but half its
+  // words keep getting missed, so the quest must keep drilling it.
+  assert.equal(masteryFor(15, 15, 5, 10), 2);
+  assert.equal(masteryFor(15, 15, 0, 10), 4);
+});
+
+test('an untouched topic is "not started", not "learning"', () => {
+  assert.equal(masteryFor(0, 15, 10, 10), 0);
+});
+
+test('mastery rises as both stars and remembered words rise', () => {
+  assert.equal(masteryFor(3, 15, 9, 10), 1);
+  assert.equal(masteryFor(7, 15, 5, 10), 2);
+  assert.equal(masteryFor(12, 15, 2, 10), 3);
+  assert.equal(masteryFor(15, 15, 1, 10), 4);
+});
+
+test('rank is the highest threshold passed, and never falls off either end', () => {
+  const ranks = [{ min: 0, name: 'Egg' }, { min: 40, name: 'Hatchling' }, { min: 100, name: 'Dragon' }];
+
+  assert.equal(rankFor(0, ranks).name, 'Egg');
+  assert.equal(rankFor(39, ranks).name, 'Egg');
+  assert.equal(rankFor(40, ranks).name, 'Hatchling');
+  assert.equal(rankFor(99, ranks).name, 'Hatchling');
+  assert.equal(rankFor(100, ranks).name, 'Dragon');
+  assert.equal(rankFor(99999, ranks).name, 'Dragon');
 });
