@@ -75,5 +75,19 @@
     return r;
   }
 
-  return { updateSrsEntry, weakSrsEntries, isWeakWord, masteryFor, rankFor };
+  // How many games are open on a topic, given the stars earned in each (ordered
+  // easiest-first). Each game opens the next at 2 stars. Deliberately NOT keyed
+  // to mastery: the top mastery band needs a full star row, a full row needs the
+  // last game, and gating the last game on that band made it unreachable.
+  function modesOpen(starsInOrder, needed) {
+    const pass = needed == null ? 2 : needed;
+    let open = 1;
+    for (let i = 0; i < starsInOrder.length - 1; i++) {
+      if ((starsInOrder[i] || 0) < pass) break;
+      open = i + 2;
+    }
+    return open;
+  }
+
+  return { updateSrsEntry, weakSrsEntries, isWeakWord, masteryFor, rankFor, modesOpen };
 });

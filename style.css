@@ -258,6 +258,22 @@ img { -webkit-user-drag: none; }
 .rc-live .rc-tip { font-size: 13px; font-weight: 700; color: var(--ink-soft); }
 .rc-live .rc-tip b { color: #7E57C2; }
 
+/* ─ Study mode ─────────────────────────────────────────────────────────── */
+.study-card {
+  max-width: 460px; margin: 0 auto; background: #fff; border-radius: var(--r-lg);
+  box-shadow: var(--shadow); padding: 26px 20px; text-align: center;
+  border: 3px solid #26A69A;
+}
+.study-card .sd-emoji { font-size: 72px; line-height: 1; }
+.study-card .sd-hanzi { font-size: 58px; font-weight: 900; margin: 8px 0 2px; }
+.study-card .sd-pinyin { font-size: 24px; font-weight: 800; color: #00897B; }
+.study-card .sd-en { font-size: 19px; font-weight: 800; color: var(--ink-soft); margin: 6px 0 16px; }
+.study-nav {
+  display: flex; gap: 12px; justify-content: center; margin-top: 18px; flex-wrap: wrap;
+}
+.mode-card.study-tile { border: 3px solid #26A69A; }
+.mode-card.mode-locked { filter: saturate(.2) opacity(.6); cursor: default; }
+
 /* ─ Player rank ────────────────────────────────────────────────────────── */
 .rank-card {
   max-width: 920px; margin: 18px auto 0; padding: 12px 16px;

@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { updateSrsEntry, weakSrsEntries, isWeakWord, masteryFor, rankFor } = require('../learning.js');
+const { updateSrsEntry, weakSrsEntries, isWeakWord, masteryFor, rankFor, modesOpen } = require('../learning.js');
 
 const steps = [1, 2, 4, 8, 16, 32];
 const addDays = (date, days) => {
@@ -99,4 +99,30 @@ test('rank is the highest threshold passed, and never falls off either end', () 
   assert.equal(rankFor(99, ranks).name, 'Hatchling');
   assert.equal(rankFor(100, ranks).name, 'Dragon');
   assert.equal(rankFor(99999, ranks).name, 'Dragon');
+});
+
+/* ── game unlocking: the ramp must never be able to lock itself ─────────── */
+
+test('a fresh topic opens only the easiest game', () => {
+  assert.equal(modesOpen([0, 0, 0, 0, 0], 2), 1);
+});
+
+test('each game opens the next one at two stars', () => {
+  assert.equal(modesOpen([1, 0, 0, 0, 0], 2), 1, 'one star is not enough');
+  assert.equal(modesOpen([2, 0, 0, 0, 0], 2), 2);
+  assert.equal(modesOpen([3, 2, 0, 0, 0], 2), 3);
+  assert.equal(modesOpen([3, 3, 2, 0, 0], 2), 4);
+  assert.equal(modesOpen([3, 3, 3, 2, 0], 2), 5);
+});
+
+test('the hardest game is reachable without already having beaten it', () => {
+  // The first ramp gated Write It! on a mastery band that required a full star
+  // row — which required Write It!. Nothing may depend on its own output again.
+  const noWriteStars = [3, 3, 3, 3, 0];
+
+  assert.equal(modesOpen(noWriteStars, 2), 5);
+});
+
+test('a gap partway along stops the ramp there', () => {
+  assert.equal(modesOpen([3, 0, 3, 3, 3], 2), 2, 'cannot skip past an unbeaten game');
 });

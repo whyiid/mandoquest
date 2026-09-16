@@ -116,11 +116,12 @@ const weakSrsEntries = window.MandoLearning.weakSrsEntries;
 const isWeakWord = window.MandoLearning.isWeakWord;
 const masteryFor = window.MandoLearning.masteryFor;
 const rankFor = window.MandoLearning.rankFor;
+const modesOpen = window.MandoLearning.modesOpen;
 
 /* ── Persistent state ────────────────────────────────────────────────── */
 // Bumped with the service-worker CACHE version. Shown on the Progress screen so
 // "am I actually on the new build?" can be answered by looking, not by asking.
-const APP_BUILD = 'v34';
+const APP_BUILD = 'v35';
 const SAVE_KEY = 'mandoquest.v1';
 const DEFAULT_STATE = { progress: {}, streak: { count: 0, last: '' }, sentence: { best: 0 }, patterns: {}, unlockSeen: [], gateV2: false, quest: null, srs: {}, tones: { best: 0 }, hear: { best: 0 } };
 let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -393,7 +394,6 @@ function catTier(id) {
   const i = MANDO_DATA.categories.findIndex(c => c.id === id);
   return i < 4 ? 'easy' : i < 9 ? 'medium' : 'hard';
 }
-const TIER_BADGE = { easy: '🟢 Easy', medium: '🟡 Medium', hard: '🔴 Hard' };
 
 /* ── player rank (global ramp) ───────────────────────────────────────────
    Topic tier alone made the ramp a dead end: topic 1 stayed a 4-word round
@@ -401,12 +401,17 @@ const TIER_BADGE = { easy: '🟢 Easy', medium: '🟡 Medium', hard: '🔴 Hard'
    version. Rank is earned across the whole app, so the SAME topic gets harder
    as he does — more items per round, more daily jobs, and a higher pass mark
    than "finished it at all". */
+// `need` is the star mark a quest job must reach to count. It stayed at 1 for a
+// long time on purpose: the first version jumped to 2 the moment he passed 40
+// stars, which — stacked on top of harder topics and harder games arriving the
+// same day — turned the quest into something he could not clear, and he gave up
+// on it. Finishing the round is the job until he is genuinely far along.
 const RANKS = [
   { min: 0,   badge: '🥚', name: 'Egg',          jobs: 3, need: 1, extra: 0 },
-  { min: 40,  badge: '🐣', name: 'Hatchling',    jobs: 3, need: 2, extra: 0 },
-  { min: 100, badge: '🐲', name: 'Young Dragon', jobs: 4, need: 2, extra: 1 },
-  { min: 180, badge: '🔥', name: 'Fire Dragon',  jobs: 4, need: 3, extra: 1 },
-  { min: 280, badge: '👑', name: 'Dragon Master',jobs: 5, need: 3, extra: 2 }
+  { min: 40,  badge: '🐣', name: 'Hatchling',    jobs: 3, need: 1, extra: 0 },
+  { min: 100, badge: '🐲', name: 'Young Dragon', jobs: 3, need: 1, extra: 1 },
+  { min: 200, badge: '🔥', name: 'Fire Dragon',  jobs: 4, need: 2, extra: 1 },
+  { min: 320, badge: '👑', name: 'Dragon Master',jobs: 4, need: 2, extra: 1 }
 ];
 function playerRank() { return rankFor(totalStars(), RANKS); }
 function rankIndex() { return RANKS.indexOf(playerRank()); }
@@ -520,19 +525,39 @@ function renderCategory(catId) {
     ? cat.words.length + ' words'
     : categoryStars(catId) + '/' + maxStars() + ' ⭐';
   mountDragon($('#cat-dragon'));
+  // Show how far HE has got with this topic, not where the topic sits in the
+  // list. "Medium" on a topic he has never opened told him nothing about himself
+  // and read like the app calling an untouched topic half-done.
   $('#cat-speech').textContent =
     (isGalaxy ? '🌌 Mix from all topics'
      : isSrs   ? '🧠 Words you are about to forget'
-     : TIER_BADGE[catTier(catId)]) + ' • Choose a game! 🎮';
+     : masteryOf(catId).badge + ' ' + masteryOf(catId).label) + ' • Choose a game! 🎮';
   const list = $('#mode-list'); list.innerHTML = '';
-  MODES.forEach(mo => {
+
+  // Study first. It is always available and never scored, so there is somewhere
+  // to go that cannot be failed — including on a topic opened for the very first
+  // time, where every game below would just be a quiz on unseen words.
+  if (!isGalaxy && !isSrs) {
+    const sc = el('div', 'mode-card study-tile');
+    sc.innerHTML =
+      '<span class="m-emoji" style="background:#26A69A">📖</span>' +
+      '<div><div class="m-name">Learn the words</div>' +
+      '<div class="m-sub">Look and listen — no score</div></div>';
+    sc.onclick = () => { showScreen('screen-game'); modeStudy(catId); };
+    list.appendChild(sc);
+  }
+
+  const allowed = (isGalaxy || isSrs) ? MODES : modesAllowed(catId);
+  MODES.forEach((mo, idx) => {
     const best = getBest(catId, mo.key);
-    const card = el('div', 'mode-card');
+    const open = allowed.some(a => a.key === mo.key);
+    const card = el('div', 'mode-card' + (open ? '' : ' mode-locked'));
     card.innerHTML =
-      '<span class="m-emoji" style="background:' + mo.color + '">' + mo.emoji + '</span>' +
-      '<div><div class="m-name">' + mo.name + '</div><div class="m-sub">' + mo.sub + '</div>' +
+      '<span class="m-emoji" style="background:' + mo.color + '">' + (open ? mo.emoji : '🔒') + '</span>' +
+      '<div><div class="m-name">' + mo.name + '</div>' +
+      '<div class="m-sub">' + (open ? mo.sub : 'Win ' + MODES[idx - 1].name + ' with 2 stars to open') + '</div>' +
       '<div class="m-stars">' + '⭐'.repeat(best) + '☆'.repeat(3 - best) + '</div></div>';
-    card.onclick = () => launch(mo.key, catId);
+    if (open) card.onclick = () => launch(mo.key, catId);
     list.appendChild(card);
   });
 }
@@ -586,6 +611,70 @@ function makeDraggable(item, onDrop) {
     item.addEventListener('pointerup', up);
     item.addEventListener('pointercancel', up);
   });
+}
+
+/* ===========================================================================
+   STUDY — look before you are tested
+   Every other screen in the app asks a question. For a topic he has not met
+   yet that is the wrong first move: he was being quizzed on words nobody had
+   shown him, got them wrong, and concluded he was bad at it. This mode cannot
+   be failed and keeps no score — it is the "read it first" step that the quest
+   hands him before any round on a new topic.
+   =========================================================================== */
+function modeStudy(catId) {
+  currentGame = { catId, replay: () => { showScreen('screen-game'); modeStudy(catId); } };
+  const cat = MANDO_DATA.getCategory(catId);
+  // Words he has not proven come first; a short topic simply shows everything.
+  const weak = weakWordsIn(catId);
+  const list = (weak.length >= 4 ? weak : cat.words).slice(0, 8);
+  let i = 0;
+
+  function card() {
+    if (i >= list.length) { done(); return; }
+    const w = list[i];
+    setDots(list.length, i);
+    $('#game-score').textContent = (i + 1) + '/' + list.length;
+    gameRender(
+      '<div class="study-card">' +
+        '<div class="sd-emoji">' + (w.emoji || '📖') + '</div>' +
+        '<div class="sd-hanzi">' + w.hanzi + '</div>' +
+        '<div class="sd-pinyin">' + w.pinyin + '</div>' +
+        '<div class="sd-en">' + w.en + '</div>' +
+        '<button class="btn lg" id="sd-play">🔊 Hear it again</button>' +
+      '</div>' +
+      '<div class="study-nav">' +
+        (i > 0 ? '<button class="btn secondary" id="sd-back">⬅️ Back</button>' : '') +
+        '<button class="btn" id="sd-next">' + (i === list.length - 1 ? "I'm ready! ✅" : 'Next ➜') + '</button>' +
+      '</div>',
+      'Just look and listen — no score here. 😊');
+    $('#sd-play').onclick = () => speak(w.hanzi);
+    $('#sd-next').onclick = () => { sfx('tap'); i++; card(); };
+    const back = $('#sd-back');
+    if (back) back.onclick = () => { sfx('tap'); i--; card(); };
+    speak(w.hanzi);
+  }
+
+  function done() {
+    // Studying is a real quest job — it is the step that makes the next round
+    // winnable — so it clears its slot regardless of the rank's star mark.
+    questComplete('study:' + catId, 99);
+    bumpStreak(); save();
+    sfx('win'); confetti();
+    gameRender(
+      '<div class="study-card">' +
+        '<div class="sd-emoji">🎓</div>' +
+        '<div class="sd-hanzi" style="font-size:34px">Nice studying!</div>' +
+        '<div class="sd-en">You saw ' + list.length + ' words. Want to try a game now?</div>' +
+      '</div>' +
+      '<div class="study-nav">' +
+        '<button class="btn secondary" id="sd-again">🔁 Look again</button>' +
+        '<button class="btn" id="sd-play-game">🎮 Play a game</button>' +
+      '</div>',
+      'You are ready! 🌟');
+    $('#sd-again').onclick = () => { i = 0; card(); };
+    $('#sd-play-game').onclick = () => launch(modesAllowed(catId)[0].key, catId);
+  }
+  card();
 }
 
 /* ===========================================================================
@@ -1382,6 +1471,22 @@ function weakestModes(catId, rnd) {
     .sort((a, b) => a.s - b.s || a.j - b.j)
     .map(x => x.m);
 }
+// MODES is ordered easiest-first: Match shows the answer on screen, Write It!
+// asks him to produce it from memory with nothing to look at.
+//
+// Aiming the weakest mode at the weakest topic looked right on paper and was the
+// single worst thing in the first version: a topic he had never opened came back
+// as "Write It!", because a mode he has never played scores zero. Brand-new
+// vocabulary plus the hardest possible game is not a challenge, it is a wall.
+// Games now unlock as the topic itself gets learned.
+// Each game opens the next one: clear this game with 2 stars and the following
+// one appears. Gating on mastery instead would deadlock — the top mastery band
+// needs a full star row, a full star row needs Write It!, and Write It! was in
+// the top band. This rule cannot lock itself, and it is a promise a child can
+// act on: win this, unlock that.
+function modesAllowed(catId) {
+  return MODES.slice(0, modesOpen(MODES.map(m => getBest(catId, m.key)), 2));
+}
 // Every unlocked topic that still owes work, hardest-first. `needsWork` already
 // keeps a mastered topic in the list while any of its words are slipping, so
 // this is the single place that decides what the day is allowed to ask for.
@@ -1404,29 +1509,54 @@ function buildQuest() {
   const tasks = [];
   const add = t => { if (!tasks.some(x => x.key === t.key)) tasks.push(t); };
 
-  // 1 — words actually slipping. The schedule knows which ones are about to go,
+  // 1 — a win first. The previous version opened with the three topics he was
+  // worst at, so the day began with three things he could not do and he quit on
+  // it. An easy round on something he already owns costs one slot and changes
+  // the mood of everything after it.
+  const owned = MANDO_DATA.categories
+    .filter((_, i) => isUnlocked(i))
+    .filter(c => masteryIndex(c.id) >= 2);
+  if (owned.length) {
+    const wc = one(owned);
+    const wm = one(modesAllowed(wc.id));
+    add({ key: 'mode:' + wc.id + ':' + wm.key, icon: '☀️', title: 'Warm-up: ' + wc.name, sub: wm.name });
+  }
+
+  // 2 — words actually slipping. The schedule knows which ones are about to go,
   // so it outranks any topic-level guess.
   const due = dueWords();
-  if (due.length >= 6) {
+  if (due.length >= 6 && tasks.length < rank.jobs) {
     add({ key: 'srs', icon: '🧠', title: 'Memory Check', sub: due.length + ' words due today' });
   }
 
-  // 2 — the unmastered topics themselves, weakest first, each aimed at the mode
-  // it scores worst in. This is the bulk of the day: what he cannot do yet gets
-  // the slots, and a topic that is genuinely finished never appears at all.
+  // 3 — the unmastered topics, weakest first. A topic he has not opened gets the
+  // study screen rather than a quiz; one he has met gets a game, but only from
+  // the set its mastery has unlocked.
   const usedModes = [];
   weakTopics.forEach(t => {
     if (tasks.length >= rank.jobs) return;
-    const modes = weakestModes(t.cat.id, rnd);
-    // Prefer a game he has not already been given today. Only when every mode is
-    // spoken for does a repeat become acceptable — variety matters, but not more
-    // than aiming each round at the mode the topic is actually weakest in.
-    const mo = modes.find(m => usedModes.indexOf(m.key) === -1) || modes[0];
+    if (t.m === 0) {
+      add({ key: 'study:' + t.cat.id, icon: '📖', title: 'Learn: ' + t.cat.name, sub: 'See the new words first' });
+      // Pair it with the easiest game on the same words. Studying then playing
+      // what he just read is the point; leaving the slot to a generic extra sent
+      // a first-day player straight into whole-sentence listening.
+      if (tasks.length < rank.jobs) {
+        const first = modesAllowed(t.cat.id)[0];
+        add({ key: 'mode:' + t.cat.id + ':' + first.key, icon: '🎮', title: 'Try it: ' + t.cat.name, sub: first.name });
+        usedModes.push(first.key);
+      }
+      return;
+    }
+    const allowed = modesAllowed(t.cat.id);
+    const ranked = weakestModes(t.cat.id, rnd).filter(m => allowed.some(a => a.key === m.key));
+    // Prefer a game he has not already been given today. Only when every allowed
+    // mode is spoken for does a repeat become acceptable.
+    const mo = ranked.find(m => usedModes.indexOf(m.key) === -1) || ranked[0] || allowed[0];
     usedModes.push(mo.key);
     add({
       key: 'mode:' + t.cat.id + ':' + mo.key,
       icon: MASTERY[t.m].badge,
-      title: (t.m === 0 ? 'Start: ' : t.m >= 3 ? 'Polish: ' : 'Practice: ') + t.cat.name,
+      title: (t.m >= 3 ? 'Polish: ' : 'Practice: ') + t.cat.name,
       sub: mo.name + (t.weak ? ' · ' + t.weak + ' words to fix' : '')
     });
   });
@@ -1434,7 +1564,11 @@ function buildQuest() {
   // 3 — producing rounds, not just recognition. These only fill slots the weak
   // topics did not need, so on a day with plenty to fix they never appear; when
   // everything is mastered they are what keeps the day from being empty.
-  const extras = ['pattern', 'sentence', 'tones', 'hear'].concat(unlocked.length >= 3 ? ['galaxy'] : []);
+  // Whole-sentence listening and sentence frames assume vocabulary a beginner
+  // does not have yet, so they wait until a few topics are actually open.
+  const extras = ['tones', 'sentence']
+    .concat(unlocked.length >= 3 ? ['galaxy'] : [])
+    .concat(unlocked.length >= 4 ? ['hear', 'pattern'] : []);
   while (tasks.length < rank.jobs) {
     const left = extras.filter(k => !tasks.some(x => x.key === k));
     if (!left.length) break;
@@ -1473,6 +1607,7 @@ function runQuestTask(key) {
   if (key === 'tones')    { showScreen('screen-game'); modeTones(); return; }
   if (key === 'hear')     { showScreen('screen-game'); modeHearSentence(); return; }
   const p = key.split(':');
+  if (p[0] === 'study')   { showScreen('screen-game'); modeStudy(p[1]); return; }
   launch(p[2], p[1]);
 }
 function renderQuest() {
